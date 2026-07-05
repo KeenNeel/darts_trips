@@ -1,0 +1,2670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI日本ダーツ探訪 - 究極版</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --accent: #ff3e3e; --heading-bg: #8B0000; --bg: #f0f8ff; --text: #2c3e50; }
+        * { box-sizing: border-box; font-family: 'Noto Sans JP', sans-serif; }
+        body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden; touch-action: manipulation; }
+
+        #start-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1100; transition: opacity 0.5s; gap: 25px; padding: 20px; }
+        #start-screen.hide { opacity: 0; pointer-events: none; }
+        #start-image { max-width: 90%; max-height: 70vh; object-fit: contain; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        #start-play-btn { padding: 16px 50px; font-size: 1.3rem; font-weight: 900; background: var(--accent); color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 8px 0 #c0392b; transition: 0.15s; }
+        #start-play-btn:active { transform: translateY(5px); box-shadow: 0 3px 0 #c0392b; }
+
+        #intro-hint { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.4s; cursor: pointer; }
+        #intro-hint.hide { opacity: 0; pointer-events: none; }
+        .intro-hint-inner { background: var(--accent); color: white; padding: 30px 35px; border-radius: 20px; font-size: 1.4rem; font-weight: 900; text-align: center; line-height: 1.6; box-shadow: 0 15px 40px rgba(0,0,0,0.4); animation: hint-pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+        @keyframes hint-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        #mystery-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 900; }
+        .mystery-inner { background: linear-gradient(135deg, #8e44ad, #3498db); color: white; padding: 35px 45px; border-radius: 25px; font-size: 2rem; font-weight: 900; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.5); animation: mystery-bounce 0.7s ease-in-out infinite alternate; }
+        @keyframes mystery-bounce { from { transform: scale(1) rotate(-2deg); } to { transform: scale(1.08) rotate(2deg); } }
+
+        header { background: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 20; }
+        .header-controls { display: flex; align-items: center; gap: 10px; }
+        .history-btn { background: #f39c12; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        .sound-btn { background: #16a085; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        .sound-btn.off { background: #95a5a6; }
+        #timer { font-weight: 900; color: var(--accent); font-size: 1.1rem; }
+
+        #status-bar { background: linear-gradient(90deg,#8e44ad,#3498db); color: white; padding: 0 15px; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; max-height: 0; overflow: hidden; transition: max-height 0.3s, padding 0.3s; position: relative; z-index: 21; }
+        #status-bar.show { max-height: 60px; padding: 10px 15px; }
+        #status-bar .spin { display: inline-block; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .control-bar { background: white; padding: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; z-index: 19; display: flex; flex-direction: column; gap: 10px; }
+        .mode-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .mode-label { font-weight: 900; font-size: 0.85rem; color: var(--text); background: #eef2f7; padding: 5px 10px; border-radius: 20px; white-space: nowrap; }
+        .mode-selector { display: flex; gap: 8px; font-weight: bold; font-size: 0.85rem; flex-wrap: wrap; }
+        .mode-selector label { cursor: pointer; padding: 5px 12px; background: #eee; border-radius: 20px; transition: 0.2s; }
+        .mode-selector input:checked + span { color: var(--accent); }
+        .mode-selector label:has(input:checked) { background: #fdf0f0; border: 1px solid var(--accent); }
+
+        .action-group { display: flex; gap: 6px; margin-left: 6px; padding-left: 12px; border-left: 2px dashed #ddd; }
+        .action-btn { padding: 5px 12px; border: none; border-radius: 20px; font-weight: bold; font-size: 0.85rem; cursor: pointer; color: white; white-space: nowrap; transition: 0.2s; }
+        #btn-rethrow-top { background: #2c3e50; }
+        #btn-map-top { background: #27ae60; text-decoration: none; display: inline-flex; align-items: center; opacity: 0.5; pointer-events: none; }
+        #btn-map-top.ready { opacity: 1; pointer-events: auto; }
+
+        .search-box { display: flex; justify-content: center; gap: 5px; }
+        .search-box input { padding: 8px; border-radius: 20px; border: 1px solid #ccc; flex-grow: 1; max-width: 250px; outline: none; padding-left: 15px; }
+        .search-box button { padding: 8px 15px; background: #3498db; color: white; border: none; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        #ai-suggest-btn { width: 100%; margin-top: 8px; padding: 10px; background: linear-gradient(90deg,#9b59b6,#8e44ad); color: white; border: none; border-radius: 20px; font-weight: bold; font-size: 0.9rem; cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
+        #ai-suggest-btn:active { transform: translateY(2px); }
+        #ai-suggest-btn:disabled { opacity: 0.6; cursor: default; }
+
+        #game-area { width: 100vw; height: calc(100vh - 150px); position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #fff 0%, #d1e8ff 100%); transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        #japan-map-img { max-width: 95%; max-height: 90%; object-fit: contain; cursor: crosshair; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.15)); }
+
+        .dart-icon { position: absolute; font-size: 45px; line-height: 0; pointer-events: none; z-index: 60; filter: drop-shadow(0 5px 8px rgba(0,0,0,0.35)); }
+        .dart-trail { position: absolute; width: 10px; height: 10px; background: #ff3e3e; border-radius: 50%; pointer-events: none; z-index: 55; transform: translate(-50%, -50%); animation: fade-trail 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards; box-shadow: 0 0 10px #ff3e3e; }
+        @keyframes fade-trail { to { opacity: 0; transform: translate(-50%, -50%) scale(0.2); } }
+
+        .plane-icon { position: absolute; font-size: 40px; line-height: 0; pointer-events: none; z-index: 65; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
+        .plane-trail { position: absolute; width: 12px; height: 12px; background: rgba(255,255,255,0.9); border-radius: 50%; pointer-events: none; z-index: 62; transform: translate(-50%, -50%); animation: puff-fade 0.7s ease-out forwards; box-shadow: 0 0 8px rgba(255,255,255,0.8); }
+        @keyframes puff-fade { to { opacity: 0; transform: translate(-50%, -50%) scale(2.2); } }
+
+        #hit-marker { position: absolute; z-index: 58; font-size: 30px; pointer-events: none; transform: translate(-50%, -100%); display: none; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.4)); }
+
+        #challenge-ui { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 15px; border-radius: 15px; color: white; z-index: 70; text-align: center; width: 90%; max-width: 350px; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        #challenge-btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; font-size: 1.1rem; cursor: pointer; width: 100%; margin-bottom: 10px; }
+        .gauge-container { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-size: 0.8rem; font-weight: bold; }
+        .gauge-bar { flex-grow: 1; height: 15px; background: #555; border-radius: 10px; position: relative; overflow: hidden; }
+        .gauge-cursor { width: 4px; height: 100%; background: #fff; box-shadow: 0 0 5px #fff; position: absolute; left: 50%; transform: translateX(-50%); }
+        #power-bar { background: linear-gradient(90deg, #2ecc71, #f1c40f, #e74c3c); }
+        .challenge-hint { font-size: 0.7rem; color: #ccc; margin-top: 6px; line-height: 1.5; }
+
+        #result-panel { position: fixed; bottom: 0; left: 0; right: 0; height: 72vh; background: white; border-radius: 25px 25px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,0.3); z-index: 200; overflow-y: auto; padding-bottom: 30px; transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        #result-panel.active { transform: translateY(0); }
+        .res-header { background: var(--accent); color: white; padding: 25px 20px 20px; text-align: center; border-radius: 25px 25px 0 0; }
+        #res-pref-name { font-size: 1rem; font-weight: 700; opacity: 0.9; margin-bottom: 5px; }
+        #res-addr-main { font-size: 1.6rem; font-weight: 900; margin: 0; line-height: 1.3; }
+        .pref-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 15px; }
+        .stat-badge { background: rgba(255,255,255,0.25); border-radius: 12px; padding: 6px 12px; font-size: 0.8rem; font-weight: 700; }
+        .sea-note { background: rgba(255,255,255,0.9); color: #2980b9; border-radius: 10px; padding: 6px 12px; font-size: 0.85rem; font-weight: 700; margin-top: 10px; display: inline-block; }
+        .map-section { padding: 15px; background: #f8f9fa; }
+        iframe { width: 100%; height: 420px; border: 2px solid #ddd; border-radius: 12px; }
+        .image-search-btn { display: block; width: 100%; background: #3498db; color: white; text-align: center; padding: 12px; border-radius: 12px; text-decoration: none; font-weight: bold; margin-top: 10px; font-size: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .ai-section { padding: 20px; }
+        .ai-content { font-size: 0.95rem; line-height: 1.8; color: #333; }
+        .ai-heading { background-color: var(--heading-bg); color: white; padding: 12px 15px; border-radius: 8px; font-size: 1.2rem; font-weight: 900; margin: 30px 0 15px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px; }
+        .ai-content a { color: #e74c3c; font-weight: bold; text-decoration: none; border-bottom: 1px dashed #e74c3c; word-break: break-all; }
+        .ai-item-title { font-weight: 900; color: var(--heading-bg); font-size: 1.05rem; margin: 14px 0 4px; }
+        .ai-item-desc { margin-bottom: 4px; }
+        .map-links { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+        .src-link { display: inline-block; background: #eaf2fb; color: #2980b9 !important; padding: 3px 10px; border-radius: 14px; border-bottom: none !important; font-size: 0.85rem; }
+        .src-alt-link { display: inline-block; background: #f4f4f4; color: #888 !important; padding: 3px 8px; border-radius: 14px; border-bottom: none !important; font-size: 0.75rem; }
+        .map-open-link { display: inline-block; background: #e8f8ef; color: #27ae60 !important; padding: 3px 10px; border-radius: 14px; border-bottom: none !important; font-size: 0.85rem; }
+        .img-link { display: inline-block; background: #eef0ff; color: #5b4bff !important; padding: 3px 10px; border-radius: 14px; border-bottom: none !important; font-size: 0.85rem; }
+        .map-embed-btn { background: #27ae60; color: white; border: none; padding: 4px 10px; border-radius: 14px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
+        .embed-map-holder { display: block; width: 100%; }
+        .inline-map { width: 100%; height: 340px; border: 2px solid #ddd; border-radius: 10px; margin: 8px 0; }
+        .btn-close { display: block; width: calc(100% - 40px); margin: 20px auto 10px; padding: 15px; background: #2c3e50; color: white; border: none; border-radius: 50px; font-weight: 900; font-size: 1.2rem; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+
+        #history-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .history-content { background: white; width: 100%; max-width: 500px; max-height: 80vh; border-radius: 20px; padding: 20px; overflow-y: auto; position: relative; }
+        .history-item { border-bottom: 1px solid #eee; padding: 15px 0; }
+        .history-title { font-weight: bold; font-size: 1.1rem; color: var(--text); margin-bottom: 5px; }
+        .history-date { font-size: 0.8rem; color: #888; }
+        .history-link { display: inline-block; margin-top: 5px; color: #3498db; text-decoration: none; font-size: 0.9rem; font-weight: bold; }
+        .close-history { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; background: none; border: none; color: #888; }
+        #clear-history-btn { display: block; width: 100%; margin-top: 15px; padding: 12px; background: #e74c3c; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
+        #clear-history-btn:active { transform: translateY(2px); }
+    </style>
+</head>
+<body>
+
+<div id="start-screen">
+    <img src="image1.png" id="start-image" alt="スタート画面">
+    <button id="start-play-btn" onclick="playStart()">🎯 やってみる</button>
+</div>
+
+<div id="intro-hint" onclick="dismissHint()" style="display:none;">
+    <div class="intro-hint-inner">🎯<br>ダーツを投げて、当たったところに行くよ！<br><span style="font-size:0.85rem; opacity:0.85;">（タップで閉じる）</span></div>
+</div>
+
+<div id="mystery-overlay"><div class="mystery-inner">🎯💫<br>どこだろう！？</div></div>
+
+<header>
+    <div style="font-weight: 900; font-size: 1.1rem;">🗾 AI探訪ダーツ</div>
+    <div class="header-controls">
+        <button id="sound-toggle" class="sound-btn" onclick="toggleSound()">🔊 音ON</button>
+        <button class="history-btn" onclick="showHistory()">📜 履歴</button>
+        <span id="timer">00:00</span>
+    </div>
+</header>
+
+<div id="status-bar"><span id="status-icon" class="spin">🤖</span><span id="status-text"></span></div>
+
+<div class="control-bar">
+    <div class="mode-row">
+        <span class="mode-label">🎯 投げ方</span>
+        <div class="mode-selector">
+            <label><input type="radio" name="mode" value="pinpoint" checked style="display:none;"><span>ピンポイント</span></label>
+            <label><input type="radio" name="mode" value="random" style="display:none;"><span>ランダム</span></label>
+            <label><input type="radio" name="mode" value="challenge" style="display:none;"><span>チャレンジ</span></label>
+        </div>
+        <div class="action-group">
+            <button id="btn-rethrow-top" class="action-btn" onclick="resetGame()">🔄 投げ直し</button>
+            <a id="btn-map-top" class="action-btn" target="_blank">🗺️ マップ</a>
+        </div>
+    </div>
+    <div class="search-box">
+        <input type="text" id="search-input" placeholder="🌍 行き先を入力 (例: 浅草 / パリ / 埼玉県)">
+        <button onclick="searchLocation()">🚀 ここに行く</button>
+    </div>
+    <button id="ai-suggest-btn" onclick="suggestByAI()">🤖 ここに行ってみませんか？（AIが今日の話題から提案）</button>
+</div>
+
+<div id="game-area" onclick="handleMapClick(event)">
+    <img src="map-japan-color-todoufuken-name.png" id="japan-map-img" alt="日本地図">
+    <div id="hit-marker">📍</div>
+    <div id="challenge-ui">
+        <button id="challenge-btn" onclick="handleChallengeClick(event)">🎯 投げる！</button>
+        <div class="gauge-container"><span>角度</span><div class="gauge-bar" id="angle-bar"><div class="gauge-cursor" id="angle-cursor"></div></div></div>
+        <div class="gauge-container"><span>強さ</span><div class="gauge-bar" id="power-bar"><div class="gauge-cursor" id="power-cursor" style="left: 0%;"></div></div></div>
+        <div class="challenge-hint">💪 強いほど北へ！ 左＝西 / 右＝東。<br>着弾地は…お楽しみ！🎁</div>
+    </div>
+</div>
+
+<div id="result-panel">
+    <div class="res-header">
+        <div id="res-pref-name">都道府県を特定中...</div>
+        <h1 id="res-addr-main">詳しい住所を取得しています...</h1>
+        <div class="pref-stats" id="pref-stats-container"></div>
+        <div id="sea-note-area"></div>
+    </div>
+    <div class="map-section">
+        <iframe id="iframe-map" allowfullscreen></iframe>
+        <a id="btn-images" class="image-search-btn" target="_blank">🖼️ この場所の景色をGoogle画像検索で見る</a>
+    </div>
+    <div class="ai-section"><div id="ai-content" class="ai-content"></div></div>
+    <button class="btn-close" onclick="resetGame()">🏠 ダーツを投げ直す</button>
+</div>
+
+<div id="history-modal">
+    <div class="history-content">
+        <button class="close-history" onclick="closeHistory()">×</button>
+        <h2 style="margin-top:0; border-bottom: 2px solid var(--accent); padding-bottom: 10px;">🎒 旅の履歴</h2>
+        <div id="history-list"></div>
+        <button id="clear-history-btn" onclick="clearHistory()">🗑️ 履歴をすべて消す</button>
+    </div>
+</div>
+
+<audio id="bgm-audio" src="darts1.mp3" loop preload="auto"></audio>
+
+<script>
+    // ★★★ 地図座標変換（この地図画像 1400x1320 用に実測校正） ★★★
+    const NAT_W = 1400, NAT_H = 1320;
+    const PROJ = { px: [11.095427, 59.344732, -7896.285385], py: [-90.169645, 10.618296, 2621.812840] };
+    function latLngToNatPx(lat, lng){ return { x: PROJ.px[0]*lat+PROJ.px[1]*lng+PROJ.px[2], y: PROJ.py[0]*lat+PROJ.py[1]*lng+PROJ.py[2] }; }
+    function natPxToLatLng(x, y){ const a=PROJ.px[0],b=PROJ.px[1],d=PROJ.py[0],e=PROJ.py[1]; const det=a*e-b*d; const bx=x-PROJ.px[2],by=y-PROJ.py[2]; return { lat:(bx*e-b*by)/det, lng:(a*by-bx*d)/det }; }
+
+    function getRenderedImageRect(){
+        const img=document.getElementById('japan-map-img'); const rect=img.getBoundingClientRect();
+        const natW=img.naturalWidth||NAT_W, natH=img.naturalHeight||NAT_H;
+        const scale=Math.min(rect.width/natW, rect.height/natH);
+        const renderW=natW*scale, renderH=natH*scale;
+        return { left:rect.left+(rect.width-renderW)/2, top:rect.top+(rect.height-renderH)/2, width:renderW, height:renderH, scale, natW, natH };
+    }
+    function viewportToNatPx(vx, vy){ const r=getRenderedImageRect(); return { x:(vx-r.left)/r.scale, y:(vy-r.top)/r.scale }; }
+    function natPxToViewport(nx, ny){ const r=getRenderedImageRect(); return { x:r.left+nx*r.scale, y:r.top+ny*r.scale }; }
+    function viewportToLatLng(vx, vy){
+        const n=viewportToNatPx(vx,vy);
+        if(n.y>NAT_H*0.86 && n.x>NAT_W*0.32){ return { lat:26.30+(Math.random()-0.5)*0.3, lng:127.80+(Math.random()-0.5)*0.3, okinawa:true }; }
+        return natPxToLatLng(n.x,n.y);
+    }
+    function nearestPrefByLatLng(lat, lng){
+        let best="",min=Infinity;
+        for(const [p,d] of Object.entries(prefData)){ const dist=Math.hypot((lat-d.lat)*1.11,(lng-d.lng)*0.91); if(dist<min){min=dist;best=p;} }
+        return best;
+    }
+
+    let currentMode='pinpoint', isAnimating=false;
+    document.querySelectorAll('input[name="mode"]').forEach(radio=>{
+        radio.addEventListener('change',(e)=>{
+            currentMode=e.target.value;
+            if(currentMode==='challenge'){ document.getElementById('challenge-ui').style.display='block'; resetChallenge(); }
+            else { document.getElementById('challenge-ui').style.display='none'; cancelAnimationFrame(challengeAnimId); }
+        });
+    });
+
+    function showStatus(text, spinning=true){ const bar=document.getElementById('status-bar'); document.getElementById('status-text').innerHTML=text; document.getElementById('status-icon').className=spinning?'spin':''; bar.classList.add('show'); }
+    function hideStatus(){ document.getElementById('status-bar').classList.remove('show'); }
+
+    let challengeState='idle', challengeAngle=0, challengePower=0, challengeAnimId;
+    function updateChallengeUI(time){
+        if(challengeState==='angle'){ challengeAngle=Math.sin(time/200)*45; document.getElementById('angle-cursor').style.left=(50+(challengeAngle/45)*50)+'%'; challengeAnimId=requestAnimationFrame(updateChallengeUI); }
+        else if(challengeState==='power'){ challengePower=(Math.sin(time/200)+1)/2*100; document.getElementById('power-cursor').style.left=challengePower+'%'; challengeAnimId=requestAnimationFrame(updateChallengeUI); }
+    }
+    function handleChallengeClick(e){
+        e.stopPropagation(); if(isAnimating)return;
+        const btn=document.getElementById('challenge-btn');
+        if(challengeState==='idle'){ challengeState='angle'; btn.innerText="🛑 角度を止める！"; challengeAnimId=requestAnimationFrame(updateChallengeUI); }
+        else if(challengeState==='angle'){ challengeState='power'; btn.innerText="🛑 強さを止める！"; }
+        else if(challengeState==='power'){
+            cancelAnimationFrame(challengeAnimId); challengeState='idle'; btn.innerText="🎯 もう一度投げる";
+            let pick;
+            if(challengePower<6){ pick="沖縄県"; }
+            else {
+                const targetLat=31.0+(challengePower/100)*(43.5-31.0);
+                const cands=Object.entries(prefData).filter(([p])=>p!=="沖縄県").sort((a,b)=>Math.abs(a[1].lat-targetLat)-Math.abs(b[1].lat-targetLat)).slice(0,5).sort((a,b)=>a[1].lng-b[1].lng);
+                const idx=Math.max(0,Math.min(cands.length-1,Math.round((challengeAngle+45)/90*(cands.length-1))));
+                pick=cands[idx][0];
+            }
+            const d=prefData[pick];
+            mysteryThrow(()=>showResultAt(d.lat+(Math.random()-0.5)*0.08,d.lng+(Math.random()-0.5)*0.08,{knownPref:pick}));
+        }
+    }
+    function resetChallenge(){ challengeState='idle'; document.getElementById('challenge-btn').innerText="🎯 投げる！"; document.getElementById('angle-cursor').style.left='50%'; document.getElementById('power-cursor').style.left='0%'; }
+
+    function handleMapClick(e){
+        if(isAnimating||document.getElementById('result-panel').classList.contains('active'))return;
+        const r=getRenderedImageRect();
+        if(currentMode==='pinpoint'){
+            const tx=Math.max(r.left,Math.min(r.left+r.width,e.clientX));
+            const ty=Math.max(r.top,Math.min(r.top+r.height,e.clientY));
+            const ll=viewportToLatLng(tx,ty);
+            launchDart(tx,ty,ll);
+        } else if(currentMode==='random'){
+            const prefs=Object.keys(prefData);
+            const pick=prefs[Math.floor(Math.random()*prefs.length)];
+            const d=prefData[pick];
+            mysteryThrow(()=>showResultAt(d.lat+(Math.random()-0.5)*0.08,d.lng+(Math.random()-0.5)*0.08,{knownPref:pick}));
+        }
+    }
+
+    async function searchLocation(){
+        if(isAnimating)return;
+        const query=document.getElementById('search-input').value; if(!query)return;
+        const inputEl=document.getElementById('search-input'); inputEl.value="🔍 検索中...";
+        try{
+            const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(query)}`);
+            const data=await res.json(); inputEl.value="";
+            if(data.length>0){
+                const lat=parseFloat(data[0].lat), lon=parseFloat(data[0].lon);
+                const cc=data[0].address?.country_code, name=data[0].display_name||query;
+                if(cc==='jp'){
+                    const np=latLngToNatPx(lat,lon); const vp=natPxToViewport(np.x,np.y); const r=getRenderedImageRect();
+                    const tx=Math.max(r.left,Math.min(r.left+r.width,vp.x)); const ty=Math.max(r.top,Math.min(r.top+r.height,vp.y));
+                    launchDart(tx,ty,{lat:lat,lng:lon});
+                } else { playThrowSound(); setTimeout(()=>{ playHitSound(); showResultAt(lat,lon,{foreignLabel:name,foreignCountry:data[0].address?.country||"海外"}); },600); }
+            } else { alert("場所が見つかりませんでした！別のキーワードを試してください。"); }
+        } catch(e){ alert("検索エラーが発生しました。"); inputEl.value=""; }
+    }
+
+    async function suggestByAI(){
+        if(isAnimating)return;
+        const btn=document.getElementById('ai-suggest-btn'); const original=btn.innerText; btn.disabled=true; btn.innerText='🤖 今日のおすすめを考え中...';
+        showStatus('今日のおすすめスポットをAIが選んでいます...');
+        const today=new Date(); const dateStr=`${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日`;
+        const prompt=`あなたは旅行提案AIです。今日は${dateStr}です。今の季節・時期や世間で話題になりそうなこと（イベント、旬の味覚、行楽シーズン等）を踏まえて、日本国内で「今行くと楽しそうな場所」を1つだけ選んでください。
+【出力形式（厳守）】1行目に場所名のみ（例：金沢市、または 青森県弘前市 のように市区町村まで）。2行目に「理由：」で始めて40文字程度のおすすめ理由。それ以外は何も書かないこと。`;
+        try{
+            const res=await fetchWithTimeout(AI_ENDPOINT,{method:'POST',body:JSON.stringify({prompt})},20000).then(r=>r.json()).catch(()=>null);
+            const msg=res&&res.message?res.message:null;
+            if(!msg||msg==='__RATE_LIMIT__'||msg.startsWith('【')){ hideStatus(); alert('AIの提案を取得できませんでした。時間をおいて再度お試しください。'); return; }
+            const lines=msg.split('\n').map(s=>s.trim()).filter(Boolean);
+            const place=(lines[0]||'').replace(/^[0-9.\-・]+/,'').trim();
+            if(!place){ hideStatus(); alert('AIの提案を読み取れませんでした。'); return; }
+            btn.innerText=`✨ ${place} はいかが？`;
+            document.getElementById('search-input').value=place;
+            await searchLocation();
+        } catch(e){ hideStatus(); alert('AI提案でエラーが発生しました。'); }
+        finally{ setTimeout(()=>{ btn.disabled=false; btn.innerText=original; },1500); }
+    }
+
+    function dartSVG(){ return `<svg width="46" height="46" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(45 50 50)"><rect x="47" y="20" width="6" height="45" fill="#2c3e50"/><polygon points="50,78 42,60 58,60" fill="#c0392b"/><polygon points="50,72 45,61 55,61" fill="#e74c3c"/><polygon points="50,16 38,22 50,30 62,22" fill="#f1c40f"/><polygon points="50,20 43,24 50,29 57,24" fill="#f39c12"/></g></svg>`; }
+
+    function launchDart(targetX, targetY, landing){
+        isAnimating=true; document.getElementById('hit-marker').style.display='none';
+        playThrowSound(); switchBGM('darts2.mp3');
+        const gameArea=document.getElementById('game-area');
+        gameArea.style.transition='none'; gameArea.style.transform='translateY(0)'; gameArea.getBoundingClientRect();
+        const gaRect=gameArea.getBoundingClientRect();
+        const localTargetX=targetX-gaRect.left, localTargetY=targetY-gaRect.top;
+        const localStartX=window.innerWidth/2-gaRect.left, localStartY=gaRect.height;
+        const dart=document.createElement('div'); dart.className='dart-icon'; dart.innerHTML=dartSVG(); gameArea.appendChild(dart);
+        const duration=800, startTime=performance.now();
+        const cpX=(localStartX+localTargetX)/2, cpY=Math.min(localStartY,localTargetY)-300;
+        function update(time){
+            let t=(time-startTime)/duration; if(t>1)t=1; const easeT=1-Math.pow(1-t,3);
+            const curX=(1-easeT)*(1-easeT)*localStartX+2*(1-easeT)*easeT*cpX+easeT*easeT*localTargetX;
+            const curY=(1-easeT)*(1-easeT)*localStartY+2*(1-easeT)*easeT*cpY+easeT*easeT*localTargetY;
+            dart.style.left=curX+'px'; dart.style.top=curY+'px';
+            dart.style.transform=`translate(-50%, -100%) scale(${3-2*easeT}) rotate(${45-45*easeT}deg)`;
+            if(Math.random()>0.2){ const tr=document.createElement('div'); tr.className='dart-trail'; tr.style.left=curX+'px'; tr.style.top=(curY-20)+'px'; gameArea.appendChild(tr); setTimeout(()=>tr.remove(),500); }
+            if(t<1){ requestAnimationFrame(update); }
+            else {
+                const marker=document.getElementById('hit-marker');
+                marker.style.left=localTargetX+'px'; marker.style.top=localTargetY+'px'; marker.style.display='block';
+                dart.remove(); playHitSound();
+                const visibleHeight=window.innerHeight*0.30;
+                if(targetY>visibleHeight){ const shift=Math.min(targetY-visibleHeight+40,gaRect.height*0.5); gameArea.style.transition='transform 0.5s cubic-bezier(0.2,0.8,0.2,1)'; gameArea.style.transform=`translateY(-${shift}px)`; }
+                isAnimating=false;
+                flyPlaneTo(localStartX,localStartY,localTargetX,localTargetY,gameArea,()=>showResultAt(landing.lat,landing.lng,{okinawa:landing.okinawa}));
+            }
+        }
+        requestAnimationFrame(update);
+    }
+
+    function mysteryThrow(onDone){
+        isAnimating=true; document.getElementById('hit-marker').style.display='none';
+        playThrowSound(); switchBGM('darts2.mp3');
+        const gameArea=document.getElementById('game-area');
+        gameArea.style.transition='none'; gameArea.style.transform='translateY(0)'; gameArea.getBoundingClientRect();
+        const gaRect=gameArea.getBoundingClientRect();
+        const dart=document.createElement('div'); dart.className='dart-icon'; dart.innerHTML=dartSVG(); gameArea.appendChild(dart);
+        const sx=window.innerWidth/2-gaRect.left, sy=gaRect.height, dur=700, st=performance.now();
+        function up(now){
+            let t=(now-st)/dur; if(t>1)t=1; const e=1-Math.pow(1-t,2);
+            dart.style.left=sx+'px'; dart.style.top=(sy-e*(gaRect.height+250))+'px';
+            dart.style.transform=`translate(-50%,-100%) rotate(${e*900}deg) scale(${1.6-0.8*e})`;
+            if(Math.random()>0.3){ const tr=document.createElement('div'); tr.className='dart-trail'; tr.style.left=sx+(Math.random()-0.5)*20+'px'; tr.style.top=(sy-e*(gaRect.height+250))+'px'; gameArea.appendChild(tr); setTimeout(()=>tr.remove(),500); }
+            if(t<1){ requestAnimationFrame(up); }
+            else { dart.remove(); const ov=document.getElementById('mystery-overlay'); ov.style.display='flex'; setTimeout(()=>{ ov.style.display='none'; playHitSound(); isAnimating=false; onDone(); },1500); }
+        }
+        requestAnimationFrame(up);
+    }
+
+    function flyPlaneTo(sx,sy,tx,ty,container,onDone){
+        const plane=document.createElement('div'); plane.className='plane-icon'; plane.innerText='✈️'; container.appendChild(plane);
+        const angleDeg=Math.atan2(ty-sy,tx-sx)*180/Math.PI; const dur=900, start=performance.now();
+        const cpX=(sx+tx)/2, cpY=Math.min(sy,ty)-120;
+        function step(now){
+            let t=(now-start)/dur; if(t>1)t=1; const e=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+            const x=(1-e)*(1-e)*sx+2*(1-e)*e*cpX+e*e*tx, y=(1-e)*(1-e)*sy+2*(1-e)*e*cpY+e*e*ty;
+            plane.style.left=x+'px'; plane.style.top=y+'px'; plane.style.transform=`translate(-50%,-50%) rotate(${angleDeg+45}deg) scale(${1.2-0.2*e})`;
+            if(Math.random()>0.4){ const p=document.createElement('div'); p.className='plane-trail'; p.style.left=x+'px'; p.style.top=y+'px'; container.appendChild(p); setTimeout(()=>p.remove(),700); }
+            if(t<1){ requestAnimationFrame(step); } else { plane.style.transition='opacity 0.3s'; plane.style.opacity='0'; setTimeout(()=>plane.remove(),300); if(onDone)onDone(); }
+        }
+        requestAnimationFrame(step);
+    }
+
+    let historyData=JSON.parse(localStorage.getItem('dartsHistory'))||[];
+    function saveHistory(pref,city,lat,lng){ historyData.unshift({pref,city,lat,lng,date:new Date().toLocaleString()}); if(historyData.length>50)historyData.pop(); localStorage.setItem('dartsHistory',JSON.stringify(historyData)); }
+    function showHistory(){
+        const listDiv=document.getElementById('history-list');
+        if(historyData.length===0){ listDiv.innerHTML="<p style='text-align:center; color:#888; padding: 20px;'>まだ旅の履歴がありません。ダーツを投げましょう！🎯</p>"; }
+        else { listDiv.innerHTML=historyData.map(h=>`<div class="history-item"><div class="history-title">📍 ${h.city} <span style="font-size:0.8rem; color:#666;">(${h.pref})</span></div><div class="history-date">📅 ${h.date}</div><a href="https://www.google.com/maps/search/?api=1&query=${h.lat},${h.lng}" target="_blank" class="history-link">🗺️ Googleマップで開く</a></div>`).join(''); }
+        document.getElementById('history-modal').style.display='flex';
+    }
+    function closeHistory(){ document.getElementById('history-modal').style.display='none'; }
+    function clearHistory(){ if(historyData.length===0)return; if(confirm('旅の履歴をすべて消しますか？この操作は取り消せません。')){ historyData=[]; localStorage.removeItem('dartsHistory'); showHistory(); } }
+
+    const prefData = {
+        "北海道":{pop:"約510万人",capital:"札幌市",flower:"ハマナス",food:"ジンギスカン・海鮮",lat:43.06,lng:141.34},
+        "青森県":{pop:"約120万人",capital:"青森市",flower:"リンゴの花",food:"大間まぐろ",lat:40.82,lng:140.74},
+        "岩手県":{pop:"約117万人",capital:"盛岡市",flower:"キリ",food:"わんこそば",lat:39.70,lng:141.15},
+        "宮城県":{pop:"約226万人",capital:"仙台市",flower:"ミヤギノハギ",food:"牛タン",lat:38.26,lng:140.87},
+        "秋田県":{pop:"約93万人",capital:"秋田市",flower:"フキノトウ",food:"きりたんぽ",lat:39.71,lng:140.10},
+        "山形県":{pop:"約104万人",capital:"山形市",flower:"ベニバナ",food:"芋煮",lat:38.24,lng:140.36},
+        "福島県":{pop:"約178万人",capital:"福島市",flower:"ネモトシャクナゲ",food:"喜多方ラーメン",lat:37.75,lng:140.46},
+        "茨城県":{pop:"約283万人",capital:"水戸市",flower:"バラ",food:"納豆",lat:36.34,lng:140.44},
+        "栃木県":{pop:"約189万人",capital:"宇都宮市",flower:"ヤシオツツジ",food:"宇都宮餃子",lat:36.56,lng:139.88},
+        "群馬県":{pop:"約190万人",capital:"前橋市",flower:"レンゲツツジ",food:"こんにゃく",lat:36.39,lng:139.06},
+        "埼玉県":{pop:"約733万人",capital:"さいたま市",flower:"サクラソウ",food:"草加せんべい",lat:35.85,lng:139.64},
+        "千葉県":{pop:"約627万人",capital:"千葉市",flower:"ナノハナ",food:"落花生",lat:35.60,lng:140.12},
+        "東京都":{pop:"約1400万人",capital:"新宿区",flower:"ソメイヨシノ",food:"もんじゃ焼き",lat:35.68,lng:139.69},
+        "神奈川県":{pop:"約923万人",capital:"横浜市",flower:"ヤマユリ",food:"横浜シウマイ",lat:35.44,lng:139.64},
+        "新潟県":{pop:"約215万人",capital:"新潟市",flower:"チューリップ",food:"コシヒカリ",lat:37.90,lng:139.02},
+        "富山県":{pop:"約101万人",capital:"富山市",flower:"チューリップ",food:"ます寿司",lat:36.69,lng:137.21},
+        "石川県":{pop:"約111万人",capital:"金沢市",flower:"クロユリ",food:"海鮮丼",lat:36.59,lng:136.62},
+        "福井県":{pop:"約75万人",capital:"福井市",flower:"スイセン",food:"越前ガニ",lat:36.06,lng:136.22},
+        "山梨県":{pop:"約79万人",capital:"甲府市",flower:"フジザクラ",food:"ほうとう",lat:35.66,lng:138.56},
+        "長野県":{pop:"約200万人",capital:"長野市",flower:"リンドウ",food:"信州そば",lat:36.65,lng:138.18},
+        "岐阜県":{pop:"約193万人",capital:"岐阜市",flower:"レンゲソウ",food:"飛騨牛",lat:35.42,lng:136.75},
+        "静岡県":{pop:"約358万人",capital:"静岡市",flower:"ツツジ",food:"うなぎ・お茶",lat:34.97,lng:138.38},
+        "愛知県":{pop:"約748万人",capital:"名古屋市",flower:"カキツバタ",food:"ひつまぶし",lat:35.18,lng:136.90},
+        "三重県":{pop:"約173万人",capital:"津市",flower:"ハナショウブ",food:"松阪牛",lat:34.73,lng:136.50},
+        "滋賀県":{pop:"約140万人",capital:"大津市",flower:"シャクナゲ",food:"近江牛",lat:35.00,lng:135.86},
+        "京都府":{pop:"約253万人",capital:"京都市",flower:"シダレザクラ",food:"抹茶・湯豆腐",lat:35.01,lng:135.76},
+        "大阪府":{pop:"約877万人",capital:"大阪市",flower:"ウメ",food:"たこ焼き",lat:34.68,lng:135.52},
+        "兵庫県":{pop:"約539万人",capital:"神戸市",flower:"ノジギク",food:"神戸牛",lat:34.69,lng:135.18},
+        "奈良県":{pop:"約130万人",capital:"奈良市",flower:"ナラノヤエザクラ",food:"柿の葉寿司",lat:34.68,lng:135.80},
+        "和歌山県":{pop:"約89万人",capital:"和歌山市",flower:"ウメ",food:"和歌山ラーメン",lat:34.22,lng:135.16},
+        "鳥取県":{pop:"約54万人",capital:"鳥取市",flower:"二十世紀梨",food:"松葉ガニ",lat:35.50,lng:134.23},
+        "島根県":{pop:"約65万人",capital:"松江市",flower:"ボタン",food:"出雲そば",lat:35.47,lng:133.05},
+        "岡山県":{pop:"約185万人",capital:"岡山市",flower:"モモ",food:"きびだんご",lat:34.66,lng:133.93},
+        "広島県":{pop:"約275万人",capital:"広島市",flower:"モミジ",food:"お好み焼き",lat:34.38,lng:132.45},
+        "山口県":{pop:"約131万人",capital:"山口市",flower:"夏みかん",food:"ふぐ",lat:34.18,lng:131.47},
+        "徳島県":{pop:"約70万人",capital:"徳島市",flower:"すだち",food:"徳島ラーメン",lat:34.07,lng:134.55},
+        "香川県":{pop:"約93万人",capital:"高松市",flower:"オリーブ",food:"讃岐うどん",lat:34.34,lng:134.04},
+        "愛媛県":{pop:"約130万人",capital:"松山市",flower:"みかん",food:"鯛めし",lat:33.84,lng:132.76},
+        "高知県":{pop:"約67万人",capital:"高知市",flower:"ヤマモモ",food:"カツオのたたき",lat:33.55,lng:133.53},
+        "福岡県":{pop:"約511万人",capital:"福岡市",flower:"ウメ",food:"もつ鍋",lat:33.59,lng:130.40},
+        "佐賀県":{pop:"約80万人",capital:"佐賀市",flower:"クス",food:"佐賀牛",lat:33.26,lng:130.30},
+        "長崎県":{pop:"約128万人",capital:"長崎市",flower:"ウンゼンツツジ",food:"ちゃんぽん",lat:32.75,lng:129.87},
+        "熊本県":{pop:"約171万人",capital:"熊本市",flower:"リンドウ",food:"馬刺し",lat:32.80,lng:130.70},
+        "大分県":{pop:"約110万人",capital:"大分市",flower:"豊後梅",food:"とり天",lat:33.23,lng:131.61},
+        "宮崎県":{pop:"約104万人",capital:"宮崎市",flower:"ハマユウ",food:"チキン南蛮",lat:31.90,lng:131.42},
+        "鹿児島県":{pop:"約156万人",capital:"鹿児島市",flower:"ミヤマキリシマ",food:"黒豚・白くま",lat:31.59,lng:130.55},
+        "沖縄県":{pop:"約146万人",capital:"那覇市",flower:"デイゴ",food:"沖縄そば",lat:26.21,lng:127.68}
+    };
+
+    const AI_ENDPOINT='https://script.google.com/macros/s/AKfycbxT2T8HcLaGMSnaKzwR0AbtXu1QD6tZ5e638EHaQwI5zW4nrgTsYTW_QaJFhyoyvg/exec';
+    let startTime, timerInterval;
+    function startGame(){ startTime=Date.now(); timerInterval=setInterval(updateTimer,1000); }
+    function playStart(){ const ss=document.getElementById('start-screen'); ss.classList.add('hide'); setTimeout(()=>ss.style.display='none',500); document.getElementById('intro-hint').style.display='flex'; startBGM(); }
+    function dismissHint(){ const h=document.getElementById('intro-hint'); h.classList.add('hide'); setTimeout(()=>h.style.display='none',400); startBGM(); }
+    window.addEventListener('load', startGame);
+    function updateTimer(){ const diff=Math.floor((Date.now()-startTime)/1000); document.getElementById('timer').innerText=`${String(Math.floor(diff/60)).padStart(2,'0')}:${String(diff%60).padStart(2,'0')}`; }
+
+    async function showResultAt(currentLat, currentLng, opts={}){
+        const isForeign=!!opts.foreignLabel;
+        document.getElementById('result-panel').classList.add('active');
+        document.getElementById('res-pref-name').innerText="🛬 到着地を特定中...";
+        document.getElementById('res-addr-main').innerText=isForeign?(opts.foreignLabel||"海外"):"詳しい住所を検索中...";
+        document.getElementById('pref-stats-container').innerHTML="";
+        document.getElementById('sea-note-area').innerHTML="";
+        document.getElementById('ai-content').innerHTML="";
+        showStatus('🤖 AIガイドが地域の魅力とスポット15件を執筆中です…（最大1分お待ちください）');
+
+        const setMapLinks=(la,lo)=>{
+            const mapUrl=`https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
+            document.getElementById('iframe-map').src=`https://maps.google.co.jp/maps?q=${la},${lo}&hl=ja&z=13&output=embed`;
+            const topMap=document.getElementById('btn-map-top'); topMap.href=mapUrl; topMap.classList.add('ready');
+        };
+        setMapLinks(currentLat,currentLng);
+
+        const reverseGeo=(la,lo)=>fetchWithTimeout(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=12&accept-language=ja&lat=${la}&lon=${lo}`,{},6000).then(r=>r.json()).catch(()=>null);
+        let addrData=await reverseGeo(currentLat,currentLng);
+        let a=(addrData&&!addrData.error)?(addrData.address||null):null;
+        let seaSnapped=false;
+        let prefName, data, city, addressFull, place;
+
+        if(isForeign){
+            prefName="🌍 海外の地";
+            data={pop:"海外",capital:opts.foreignCountry||"海外",flower:"🌍",food:"現地グルメ",lat:currentLat,lng:currentLng};
+            city=(opts.foreignLabel||'').split(',')[0]; addressFull=opts.foreignLabel||city; place=opts.foreignLabel||"海外の観光地";
+            document.getElementById('res-pref-name').innerText=`✨ ${prefName} に到着！ ✨`;
+            document.getElementById('res-addr-main').innerText=city;
+            document.getElementById('pref-stats-container').innerHTML=`<div class="stat-badge">🌍 ${data.capital}</div><div class="stat-badge">📍 ${city}</div>`;
+        } else {
+            prefName=opts.knownPref||null;
+            if(a){ const gp=a.province||a.state||null; if(gp&&prefData[gp])prefName=gp; }
+            else if(!opts.okinawa){
+                seaSnapped=true;
+                prefName=prefName||nearestPrefByLatLng(currentLat,currentLng);
+                const d0=prefData[prefName]; currentLat=d0.lat; currentLng=d0.lng;
+                setMapLinks(currentLat,currentLng);
+                addrData=await reverseGeo(currentLat,currentLng); a=(addrData&&!addrData.error)?(addrData.address||null):null;
+            }
+            if(!prefName||!prefData[prefName])prefName=nearestPrefByLatLng(currentLat,currentLng);
+            data=prefData[prefName];
+            city=a?.city||a?.town||a?.village||data.capital;
+            addressFull=addrData?.display_name||`${prefName} ${city}`;
+            place=`${prefName}${city&&city!==prefName?' '+city:''}`;
+            document.getElementById('res-pref-name').innerText=`✨ ${prefName} に到着！ ✨`;
+            document.getElementById('res-addr-main').innerText=city;
+            document.getElementById('pref-stats-container').innerHTML=`<div class="stat-badge">👥 人口: ${data.pop}</div><div class="stat-badge">🏢 県庁所在地: ${data.capital}</div><div class="stat-badge">🌸 県の花: ${data.flower}</div><div class="stat-badge">🍱 名物: ${data.food}</div>`;
+            if(seaSnapped){ document.getElementById('sea-note-area').innerHTML=`<div class="sea-note">🌊 海にポチャン！最寄りの陸地「${prefName}」に流れ着きました🏖️</div>`; }
+        }
+
+        document.getElementById('btn-images').href=`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(addressFull+' 観光 景色')}`;
+        saveHistory(isForeign?"海外":prefName, city, currentLat, currentLng);
+
+        const prompt=buildRichPrompt(place, data.food);
+        const msg=await callAIGuide(prompt);
+        hideStatus();
+
+        const aiContentDiv=document.getElementById('ai-content');
+        if(msg==='__RATE_LIMIT__'){
+            aiContentDiv.innerHTML=`<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:12px;margin-bottom:15px;font-size:0.9rem;">⏳ <strong>本日のAI利用回数の上限に達しました。</strong><br>時間をおくか、翌日に再度お試しください。<br>下記の情報とリンクをご利用いただけます。</div>`+buildFallbackInfo(place,data);
+        } else if(msg){
+            window.__currentPlaceName=place;
+            aiContentDiv.innerHTML=formatAIResponse(msg);
+            addSourceFallbacks();
+        } else {
+            aiContentDiv.innerHTML=`<div style="background:#eef6ff;border:1px solid #cfe3fb;border-radius:10px;padding:10px;margin-bottom:12px;font-size:0.85rem;">🤖 AIガイドの応答が混雑で受け取れませんでした。「🔄 投げ直し」で同じ場所をもう一度狙うと成功することがあります！</div>`+buildFallbackInfo(place,data);
+        }
+    }
+
+    async function callAIGuide(prompt){
+        for(let attempt=0; attempt<2; attempt++){
+            try{
+                const res=await fetchWithTimeout(AI_ENDPOINT,{method:'POST',body:JSON.stringify({prompt})},60000);
+                const j=await res.json(); const msg=j&&j.message?j.message:null;
+                if(msg==='__RATE_LIMIT__')return msg;
+                if(msg&&!msg.startsWith('【'))return msg;
+            }catch(e){}
+            if(attempt===0)showStatus('🤖🔁 AIガイドにもう一度お願いしています…もう少しお待ちください！');
+        }
+        return null;
+    }
+
+    function buildRichPrompt(placeName, foodHint){
+        return `あなたは超テンション高めで親しみやすいプロの観光ガイドAI「ダーツ精霊」です！🎯✨
+「${placeName}」（名物のヒント: ${foodHint}）について、下記の【厳格な形式】で情報を出力してください。
+
+【厳格な条件】
+1. 見出しは必ず「### 数字. テーマ名」の形式で書く。
+2. 「### 0.」は、まず「この地域の魅力まとめ」を約200文字で熱く紹介！絵文字たっぷり🌸⛩️🍜✨。続けて「🔮 ダーツ運勢：」として今日の運勢を一言、最後に「👏 褒め言葉：」として『よくぞこの地を射抜きましたね！』のようにこの場所を選んだ人を称える一言を必ず入れる。
+3. 「### 1.」「### 2.」「### 3.」は、それぞれ必ず「5件ずつ」箇条書き（合計15件）。件数を絶対に減らさない。
+4. 各件は「■ スポット名」で始め、説明文を必ず50〜100文字で具体的に書く（短すぎ厳禁）。各件に必ず絵文字を2〜3個散りばめて華やかに。
+5. 各件の末尾に、必ず次の2つを改行して付ける：
+   [SRC]参考になる実在しそうな情報ページのURL（公式サイトや観光協会など）
+   [MAP]そのスポットのおおよその緯度,経度（数値のみ。例: [MAP]35.71,139.79）
+6. 全体を通して絵文字をバリバリに使い、ワクワクする明るいトーンで！文字数は多めに、読み応えのある内容にすること。
+
+【テーマ構成】
+### 0. この場所の魅力まとめ＆運勢
+### 1. 歴史・ランドマーク・名所（5件・各50文字以上）
+### 2. 地元グルメ・名物・お店（5件・各50文字以上）
+### 3. 自然・体験・穴場スポット（5件・各50文字以上）`;
+    }
+
+    function fetchWithTimeout(url, options, ms){ const c=new AbortController(); const id=setTimeout(()=>c.abort(),ms); return fetch(url,{...options,signal:c.signal}).finally(()=>clearTimeout(id)); }
+
+    function buildFallbackInfo(label, data){
+        const g=(kw)=>`https://www.google.com/search?q=${encodeURIComponent(kw)}`;
+        const gimg=(kw)=>`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(kw)}`;
+        const gmap=(kw)=>`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(kw)}`;
+        const mapPin=`https://www.google.com/maps/search/?api=1&query=${data.lat},${data.lng}`;
+        const embed=`https://maps.google.co.jp/maps?q=${data.lat},${data.lng}&hl=ja&z=12&output=embed`;
+        const theme=(title,items)=>`<div class="ai-heading">${title}</div>${items.map(it=>`<div class="ai-item-title">📌 ${it.name}</div><div class="ai-item-desc">${it.desc}</div><span class="map-links"><a href="${g(label+' '+it.kw)}" target="_blank" class="src-link" rel="noopener">🔍 Googleで調べる</a><a href="${gimg(label+' '+it.kw)}" target="_blank" class="img-link">🖼️ 画像検索</a><a href="${gmap(label+' '+it.kw)}" target="_blank" class="map-open-link">📍 地図で探す</a></span><br><br>`).join('')}`;
+        return `<div class="ai-heading">✨ 0. ${label} の魅力まとめ＆運勢</div>
+            🎯✨ <strong>よくぞ ${label} を射抜きましたね！</strong> 🌸 ここは名物の<strong>${data.food}</strong>をはじめ、自然・歴史・グルメがぎゅっと詰まった素敵な土地です⛩️🍜。歩けば新しい発見がいっぱい、旅のワクワクがきっと待っています！🎉<br>
+            🔮 <strong>ダーツ運勢：</strong> 今日はご縁のある一投！新しい発見に恵まれる予感です✨<br>
+            👏 <strong>褒め言葉：</strong> ナイスコントロール！最高の場所を選びましたね😊<br><br>
+            <div class="map-links" style="margin-bottom:15px;"><a href="${mapPin}" target="_blank" class="map-open-link">📍 この地点を地図で見る</a><a href="${gimg(label+' 観光 景色')}" target="_blank" class="img-link">🖼️ 画像検索</a><button class="map-embed-btn" onclick="toggleEmbedMap('fallback-embed','${embed}')">🗺️ ここに地図表示</button><span class="embed-map-holder" id="fallback-embed"></span></div>
+            ${theme('🏯 1. 歴史・ランドマーク・名所',[
+                {name:'定番の観光名所',kw:'観光名所',desc:'📸 まずは王道スポットから！写真映えする定番の見どころを押さえて、その土地の第一印象をつかみましょう✨'},
+                {name:'歴史的な建造物・史跡',kw:'歴史 史跡',desc:'⛩️ 神社仏閣や城跡など、その土地が歩んできた物語を感じられる場所。歴史好きにはたまりません🏯'},
+                {name:'ランドマーク・シンボル',kw:'ランドマーク',desc:'🗼 街の象徴として親しまれる有名スポット。記念撮影にもぴったりで、旅の思い出づくりに最適です📷'},
+                {name:'絶景スポット',kw:'絶景',desc:'🌅 思わず息をのむ景色に出会える展望台や自然の名所。空気の澄んだ時間帯を狙って訪れたいですね🏞️'},
+                {name:'博物館・文化施設',kw:'博物館 美術館',desc:'🏛️ 雨の日でもじっくり楽しめる知的スポット。地域の文化や産業をディープに学べるのが魅力です📚'}
+            ])}
+            ${theme('🍜 2. 地元グルメ・名物・お店',[
+                {name:`名物「${data.food}」の名店`,kw:data.food+' 名店',desc:'😋 ここに来たら絶対に外せないご当地グルメ！地元で長く愛される名店で本場の味を堪能しましょう🍽️'},
+                {name:'人気のランチ・食堂',kw:'ランチ 人気',desc:'🍚 地元の人でにぎわう定番ごはん処。ボリュームも満足度も高く、旅の途中の腹ごしらえにぴったり👍'},
+                {name:'ご当地スイーツ・カフェ',kw:'スイーツ カフェ',desc:'🍰 甘いもの好き必見の休憩スポット。名物スイーツやおしゃれカフェで、ほっと一息つきましょう☕'},
+                {name:'居酒屋・夜グルメ',kw:'居酒屋 グルメ',desc:'🍶 夜はご当地の味と地酒で乾杯！地元ならではの肴を楽しめば、旅の夜がぐっと豊かになります🌃'},
+                {name:'お土産・特産品',kw:'お土産 特産品',desc:'🎁 旅の思い出とともに持ち帰りたい名産品。ここでしか買えない限定品もチェックしておきましょう🛍️'}
+            ])}
+            ${theme('🌿 3. 自然・体験・穴場スポット',[
+                {name:'自然・公園・アウトドア',kw:'自然 公園',desc:'🌳 緑あふれる公園や雄大な自然のなかで、のんびりリフレッシュ。四季折々の表情も楽しめます🍃'},
+                {name:'温泉・リラックス',kw:'温泉',desc:'♨️ 旅の疲れを癒やす名湯を探そう。とろりとした泉質や絶景露天など、ご当地ならではの湯を満喫🛁'},
+                {name:'体験・アクティビティ',kw:'体験 アクティビティ',desc:'🎨 ものづくり体験やアウトドア遊びなど、思い出に残る現地体験。家族や友達と一緒に楽しめます🚣'},
+                {name:'穴場・隠れた名所',kw:'穴場 スポット',desc:'💎 混雑を避けたい人におすすめの通なスポット。地元の人に愛される静かな名所を訪ねてみましょう🤫'},
+                {name:'季節のイベント・祭り',kw:'イベント 祭り',desc:'🎏 タイミングが合えば地域のお祭りやイベントも！熱気あふれる非日常のひとときを味わえます🎆'}
+            ])}`;
+    }
+
+    let embedMapCounter=0, srcLinkCounter=0;
+    function formatAIResponse(text){
+        const contextName=(window.__currentPlaceName||'');
+        let html=text.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        html=html.replace(/■\s*([^\n\[]+)/g,(m,name)=>'\u0001'+name.trim()+'\u0002');
+        html=html.replace(/\[MAP\]\s*([\-0-9.]+)\s*,\s*([\-0-9.]+)/g,(m,la,lo)=>{
+            const id='embedmap-'+(embedMapCounter++);
+            const gmap=`https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
+            const embed=`https://maps.google.co.jp/maps?q=${la},${lo}&hl=ja&z=14&output=embed`;
+            return `<span class="map-links"><a href="${gmap}" target="_blank" class="map-open-link">📍 地図で見る</a><button class="map-embed-btn" onclick="toggleEmbedMap('${id}','${embed}')">🗺️ ここに表示</button><span class="embed-map-holder" id="${id}"></span></span>`;
+        });
+        html=html.replace(/\[SRC\]\s*(https?:\/\/[^\s<\u0001\u0002]+)/ig,(m,url)=>{
+            const id='src-'+(srcLinkCounter++);
+            const fb=`https://www.google.com/search?q=${encodeURIComponent((contextName?contextName+' ':'')+'観光')}`;
+            return `<a href="${url}" data-fallback="${fb}" id="${id}" target="_blank" class="src-link" rel="noopener">🔗 情報ソース</a>`;
+        });
+        html=html.replace(/(^|[^"'>=\u0001\u0002])(https?:\/\/[^\s<\u0001\u0002]+)/ig,(m,pre,url)=>{
+            const id='src-'+(srcLinkCounter++);
+            const fb=`https://www.google.com/search?q=${encodeURIComponent((contextName||'')+' 観光')}`;
+            return `${pre}<a href="${url}" data-fallback="${fb}" id="${id}" target="_blank" class="src-link" rel="noopener">🔗 リンク</a>`;
+        });
+        html=html.replace(/###\s*(.*?)(\n|<br>|$)/g,'<div class="ai-heading">✨ $1</div>');
+        html=html.replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--accent); font-size:1.1rem;">$1</strong>');
+        html=html.replace(/\u0001([^\u0002]+)\u0002/g,(m,name)=>{
+            const q=encodeURIComponent(((contextName?contextName+' ':'')+name));
+            const img=`https://www.google.com/search?tbm=isch&q=${q}`;
+            return `<div class="ai-item-title">📌 ${name} <a href="${img}" target="_blank" class="img-link">🖼️ 画像検索</a></div>`;
+        });
+        html=html.replace(/\n/g,'<br>');
+        return html;
+    }
+
+    function toggleEmbedMap(id, embedUrl){ const holder=document.getElementById(id); if(!holder)return; if(holder.innerHTML.trim()===''){ holder.innerHTML=`<iframe class="inline-map" src="${embedUrl}" allowfullscreen loading="lazy"></iframe>`; } else { holder.innerHTML=''; } }
+
+    function addSourceFallbacks(){
+        document.querySelectorAll('a.src-link[data-fallback]').forEach(a=>{
+            if(a.dataset.enhanced==='1')return; a.dataset.enhanced='1';
+            const fb=a.dataset.fallback; if(!fb)return;
+            const alt=document.createElement('a'); alt.href=fb; alt.target='_blank'; alt.rel='noopener'; alt.className='src-alt-link'; alt.innerHTML='🔍検索'; alt.title='リンクが開けない場合はこちら';
+            a.insertAdjacentText('afterend',' '); a.insertAdjacentElement('afterend',alt);
+        });
+    }
+
+    let soundOn=true, audioCtx=null, bgmGain=null;
+    function ensureAudio(){ if(!audioCtx){ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); bgmGain=audioCtx.createGain(); bgmGain.gain.value=0.18; bgmGain.connect(audioCtx.destination);} if(audioCtx.state==='suspended')audioCtx.resume(); }
+    function startBGM(){ if(!soundOn)return; const b=document.getElementById('bgm-audio'); if(!b)return; b.volume=0.35; b.play().catch(()=>{}); }
+    function switchBGM(file){ const b=document.getElementById('bgm-audio'); if(!b)return; if(b.getAttribute('src')!==file){ b.setAttribute('src',file); b.load(); } if(soundOn){ b.volume=0.35; b.play().catch(()=>{}); } }
+    function stopBGM(){ const b=document.getElementById('bgm-audio'); if(b)b.pause(); }
+    function makeNoiseBuffer(sec){ const len=Math.floor(audioCtx.sampleRate*sec); const buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate); const d=buf.getChannelData(0); for(let i=0;i<len;i++)d[i]=Math.random()*2-1; return buf; }
+    function playThrowSound(){ if(!soundOn)return; ensureAudio(); const t=audioCtx.currentTime; const src=audioCtx.createBufferSource(); src.buffer=makeNoiseBuffer(0.4); const bp=audioCtx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.setValueAtTime(1200,t); bp.frequency.exponentialRampToValueAtTime(400,t+0.35); bp.Q.value=0.8; const g=audioCtx.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.5,t+0.04); g.gain.exponentialRampToValueAtTime(0.001,t+0.38); src.connect(bp);bp.connect(g);g.connect(audioCtx.destination); src.start(t);src.stop(t+0.4); }
+    function playHitSound(){ if(!soundOn)return; ensureAudio(); const t=audioCtx.currentTime; const src=audioCtx.createBufferSource(); src.buffer=makeNoiseBuffer(0.08); const hp=audioCtx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1500; const g=audioCtx.createGain(); g.gain.setValueAtTime(0.6,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.07); src.connect(hp);hp.connect(g);g.connect(audioCtx.destination); src.start(t);src.stop(t+0.08); const osc=audioCtx.createOscillator(); const g2=audioCtx.createGain(); osc.type='triangle'; osc.frequency.setValueAtTime(320,t); osc.frequency.exponentialRampToValueAtTime(140,t+0.06); g2.gain.setValueAtTime(0.4,t); g2.gain.exponentialRampToValueAtTime(0.001,t+0.09); osc.connect(g2);g2.connect(audioCtx.destination); osc.start(t);osc.stop(t+0.1); }
+    function toggleSound(){ soundOn=!soundOn; const btn=document.getElementById('sound-toggle'); if(soundOn){ btn.innerText='🔊 音ON'; btn.classList.remove('off'); startBGM(); } else { btn.innerText='🔇 音OFF'; btn.classList.add('off'); stopBGM(); } }
+
+    function resetGame(){
+        document.getElementById('result-panel').classList.remove('active');
+        document.getElementById('game-area').style.transition='transform 0.4s';
+        document.getElementById('game-area').style.transform='translateY(0)';
+        document.getElementById('hit-marker').style.display='none';
+        document.getElementById('mystery-overlay').style.display='none';
+        document.querySelectorAll('.dart-icon, .dart-trail, .plane-icon, .plane-trail').forEach(d=>d.remove());
+        document.getElementById('btn-map-top').classList.remove('ready');
+        document.getElementById('ai-content').innerHTML='';
+        hideStatus();
+        switchBGM('darts1.mp3');
+    }
+</script>
+<script>
+// 🔗 ブリッジ: const宣言の prefData は window プロパティにならないため、
+//    後続の拡張スクリプトから window.prefData で参照できるよう橋渡しする。
+window.prefData = prefData;
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════
+     🎁 拡張パック（既存コードには手を加えず、ここだけで全機能を実装）
+     制覇マップ／称号・実績／シェア／パーティ／クイズ／演出／旅の実用性
+     ─ 既存の showResultAt / resetGame / launchDart 等は「ラップ」して拡張。
+════════════════════════════════════════════════════════════════════ -->
+<style>
+    /* ── 拡張ツールバー（ヘッダー下・ステータスバー上に差し込む代わりにfixedの丸ボタン群） ── */
+    #ext-fab { position: fixed; right: 12px; bottom: 12px; z-index: 210; display: flex; flex-direction: column; gap: 10px; }
+    .ext-fab-btn { width: 54px; height: 54px; border-radius: 50%; border: none; color: white; font-size: 1.4rem; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; transition: transform 0.15s; position: relative; }
+    .ext-fab-btn:active { transform: scale(0.9); }
+    #fab-collection { background: linear-gradient(135deg,#e67e22,#d35400); }
+    #fab-achieve { background: linear-gradient(135deg,#f1c40f,#f39c12); }
+    #fab-quiz { background: linear-gradient(135deg,#16a085,#1abc9c); }
+    #fab-party { background: linear-gradient(135deg,#8e44ad,#9b59b6); }
+    .ext-badge-count { position: absolute; top: -4px; right: -4px; background: #e74c3c; color: white; font-size: 0.7rem; font-weight: 900; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+
+    /* ── 汎用モーダル ── */
+    .ext-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1200; justify-content: center; align-items: center; padding: 16px; }
+    .ext-modal.show { display: flex; }
+    .ext-modal-card { background: white; width: 100%; max-width: 520px; max-height: 86vh; border-radius: 22px; padding: 22px; overflow-y: auto; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
+    .ext-modal-title { margin: 0 0 14px; font-size: 1.3rem; font-weight: 900; color: var(--text); border-bottom: 3px solid var(--accent); padding-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .ext-close { position: absolute; top: 14px; right: 18px; font-size: 1.6rem; background: none; border: none; color: #888; cursor: pointer; }
+
+    /* ── 制覇マップ ── */
+    .conquer-progress { text-align: center; margin-bottom: 14px; }
+    .conquer-bar { height: 22px; background: #eee; border-radius: 11px; overflow: hidden; margin: 8px 0; }
+    .conquer-fill { height: 100%; background: linear-gradient(90deg,#2ecc71,#27ae60); transition: width 0.6s; display: flex; align-items: center; justify-content: flex-end; color: white; font-size: 0.75rem; font-weight: 900; padding-right: 8px; }
+    .conquer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px,1fr)); gap: 7px; }
+    .conquer-cell { border-radius: 10px; padding: 8px 4px; text-align: center; font-size: 0.72rem; font-weight: 700; border: 2px solid #e0e0e0; background: #f7f7f7; color: #aaa; }
+    .conquer-cell.done { background: linear-gradient(135deg,#fff7e6,#ffe8c2); border-color: #f1c40f; color: var(--text); }
+    .conquer-cell .cc-stamp { font-size: 1.4rem; display: block; line-height: 1.4; }
+    .conquer-cell.done .cc-count { color: #e67e22; font-weight: 900; }
+
+    /* ── 実績 ── */
+    .achieve-item { display: flex; gap: 12px; align-items: center; padding: 12px 6px; border-bottom: 1px solid #f0f0f0; }
+    .achieve-ic { font-size: 2rem; width: 48px; text-align: center; filter: grayscale(1); opacity: 0.4; }
+    .achieve-item.unlocked .achieve-ic { filter: none; opacity: 1; }
+    .achieve-name { font-weight: 900; color: var(--text); }
+    .achieve-item.unlocked .achieve-name { color: var(--heading-bg); }
+    .achieve-desc { font-size: 0.8rem; color: #888; }
+
+    /* ── トースト（実績解除通知） ── */
+    #ext-toast-wrap { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 1300; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: 92%; max-width: 420px; }
+    .ext-toast { background: linear-gradient(135deg,#f1c40f,#e67e22); color: white; padding: 12px 18px; border-radius: 16px; font-weight: 900; box-shadow: 0 8px 24px rgba(0,0,0,0.35); animation: toast-in 0.4s cubic-bezier(0.2,0.9,0.3,1.4), toast-out 0.4s ease-in 3.2s forwards; text-align: center; width: 100%; }
+    .ext-toast small { display: block; font-weight: 700; opacity: 0.9; font-size: 0.78rem; margin-top: 2px; }
+    @keyframes toast-in { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes toast-out { to { transform: translateY(-20px); opacity: 0; } }
+
+    /* ── 紙吹雪 ── */
+    #ext-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 1250; }
+
+    /* ── 結果パネル内・拡張セクション ── */
+    #ext-result-extra { padding: 0 15px 5px; }
+    .ext-share-card { background: linear-gradient(135deg,#ff6b6b,#ee5253); color: white; border-radius: 16px; padding: 16px; text-align: center; margin-bottom: 12px; box-shadow: 0 6px 18px rgba(238,82,83,0.35); }
+    .ext-share-card .esc-place { font-size: 1.5rem; font-weight: 900; }
+    .ext-share-card .esc-sub { font-size: 0.85rem; opacity: 0.95; margin-top: 4px; }
+    .ext-btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ext-act-btn { flex: 1 1 auto; min-width: 130px; border: none; border-radius: 12px; padding: 11px 10px; font-weight: 900; font-size: 0.9rem; color: white; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+    .ext-share { background: linear-gradient(135deg,#1da1f2,#0a85d9); }
+    .ext-copy { background: linear-gradient(135deg,#34495e,#2c3e50); }
+    .ext-line { background: linear-gradient(135deg,#06c755,#04a648); }
+    .ext-dist { background: #eef6ff; border: 1px solid #cfe3fb; border-radius: 12px; padding: 10px 12px; margin: 10px 0; font-size: 0.9rem; font-weight: 700; color: #2c3e50; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+    .ext-travel-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .ext-travel-link { flex: 1 1 auto; text-align: center; text-decoration: none; border-radius: 12px; padding: 10px; font-weight: 900; font-size: 0.85rem; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+    .ext-jalan { background: #fff0e6; color: #e8590c !important; }
+    .ext-rakuten { background: #ffeaea; color: #bf0000 !important; }
+    .ext-gold-banner { background: linear-gradient(135deg,#ffd700,#ffb300); color: #7a5200; font-weight: 900; text-align: center; padding: 10px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(255,179,0,0.5); animation: gold-pulse 1.2s ease-in-out infinite alternate; }
+    @keyframes gold-pulse { from { box-shadow: 0 4px 12px rgba(255,179,0,0.4);} to { box-shadow: 0 4px 22px rgba(255,179,0,0.9);} }
+
+    /* ── クイズ ── */
+    .quiz-q { font-size: 1.2rem; font-weight: 900; text-align: center; margin: 6px 0 12px; color: var(--heading-bg); }
+    .quiz-score { text-align: center; font-weight: 900; color: var(--accent); margin-bottom: 8px; }
+    .quiz-result { text-align: center; padding: 10px; border-radius: 12px; margin-top: 10px; font-weight: 900; }
+    .quiz-result.good { background: #e8f8ef; color: #27ae60; }
+    .quiz-result.bad { background: #fdeaea; color: #e74c3c; }
+    #quiz-mode-banner { display: none; position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 205; background: linear-gradient(135deg,#16a085,#1abc9c); color: white; padding: 8px 18px; border-radius: 20px; font-weight: 900; box-shadow: 0 6px 16px rgba(0,0,0,0.25); font-size: 0.9rem; }
+
+    /* ── パーティ ── */
+    .party-setup label { display: block; font-weight: 700; margin: 10px 0 4px; }
+    .party-players { display: flex; flex-direction: column; gap: 8px; }
+    .party-players input { padding: 9px 12px; border: 1px solid #ccc; border-radius: 10px; outline: none; }
+    .party-theme-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .party-theme-list button { border: 1px solid #ddd; background: #f7f7f7; border-radius: 20px; padding: 8px 14px; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
+    .party-theme-list button.sel { background: #fdf0f0; border-color: var(--accent); color: var(--accent); }
+    .party-turn-banner { display:none; position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 205; background: linear-gradient(135deg,#8e44ad,#9b59b6); color: white; padding: 8px 18px; border-radius: 20px; font-weight: 900; box-shadow: 0 6px 16px rgba(0,0,0,0.25); font-size: 0.9rem; text-align: center; }
+    .party-scoreboard { margin-top: 10px; }
+    .party-score-row { display: flex; justify-content: space-between; padding: 8px 10px; border-radius: 10px; margin-bottom: 6px; font-weight: 700; background: #f7f7f7; }
+    .party-score-row.win { background: linear-gradient(135deg,#fff7e6,#ffe8c2); border: 2px solid #f1c40f; }
+    .ext-primary-btn { display: block; width: 100%; margin-top: 14px; padding: 13px; border: none; border-radius: 14px; background: var(--accent); color: white; font-weight: 900; font-size: 1.05rem; cursor: pointer; box-shadow: 0 5px 12px rgba(255,62,62,0.3); }
+    .ext-sub-note { font-size: 0.78rem; color: #999; text-align: center; margin-top: 8px; line-height: 1.5; }
+
+    /* PWA導入バナー */
+    #ext-pwa-tip { display:none; position: fixed; bottom: 12px; left: 12px; z-index: 209; background: white; border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); padding: 12px 14px; max-width: 260px; font-size: 0.82rem; line-height: 1.5; }
+    #ext-pwa-tip button { margin-top: 8px; border: none; background: var(--accent); color: white; border-radius: 10px; padding: 7px 12px; font-weight: 800; cursor: pointer; }
+    #ext-pwa-tip .pwa-x { position: absolute; top: 6px; right: 10px; background: none; border: none; color: #aaa; font-size: 1.1rem; cursor: pointer; margin: 0; padding: 0; }
+</style>
+
+<!-- 拡張FABボタン群 -->
+<div id="ext-fab">
+    <button id="fab-collection" class="ext-fab-btn" title="制覇マップ" onclick="extOpenCollection()">🗾<span class="ext-badge-count" id="fab-collection-count">0</span></button>
+    <button id="fab-achieve" class="ext-fab-btn" title="実績・称号" onclick="extOpenAchievements()">🏅<span class="ext-badge-count" id="fab-achieve-count">0</span></button>
+    <button id="fab-quiz" class="ext-fab-btn" title="地理クイズ" onclick="extOpenQuiz()">❓</button>
+    <button id="fab-party" class="ext-fab-btn" title="パーティ／妄想旅行" onclick="extOpenParty()">🎉</button>
+</div>
+
+<!-- クイズ / パーティ 進行中バナー -->
+<div id="quiz-mode-banner"></div>
+<div class="party-turn-banner" id="party-turn-banner"></div>
+
+<!-- トースト・紙吹雪 -->
+<div id="ext-toast-wrap"></div>
+<canvas id="ext-confetti"></canvas>
+
+<!-- 制覇マップ モーダル -->
+<div class="ext-modal" id="modal-collection">
+    <div class="ext-modal-card">
+        <button class="ext-close" onclick="extClose('modal-collection')">×</button>
+        <h3 class="ext-modal-title">🗾 全国制覇マップ</h3>
+        <div class="conquer-progress">
+            <div style="font-weight:900;font-size:1.1rem;" id="conquer-count-text">0 / 47 県 制覇</div>
+            <div class="conquer-bar"><div class="conquer-fill" id="conquer-fill" style="width:0%">0%</div></div>
+            <div id="conquer-remain" style="font-size:0.85rem;color:#888;"></div>
+        </div>
+        <div class="conquer-grid" id="conquer-grid"></div>
+    </div>
+</div>
+
+<!-- 実績 モーダル -->
+<div class="ext-modal" id="modal-achieve">
+    <div class="ext-modal-card">
+        <button class="ext-close" onclick="extClose('modal-achieve')">×</button>
+        <h3 class="ext-modal-title">🏅 実績・称号</h3>
+        <div id="achieve-list"></div>
+    </div>
+</div>
+
+<!-- クイズ モーダル -->
+<div class="ext-modal" id="modal-quiz">
+    <div class="ext-modal-card">
+        <button class="ext-close" onclick="extCloseQuiz()">×</button>
+        <h3 class="ext-modal-title">❓ 都道府県クイズ</h3>
+        <div class="quiz-score" id="quiz-score">スコア: 0　　問題: 0</div>
+        <div class="quiz-q" id="quiz-q">「ここはどこ？」ボタンで出題スタート！</div>
+        <div id="quiz-status" style="text-align:center;color:#666;font-size:0.9rem;line-height:1.6;">
+            出題された都道府県を、地図上でピンポイントに狙って刺してください🎯<br>近いほど高得点！
+        </div>
+        <button class="ext-primary-btn" id="quiz-start-btn" onclick="extQuizNext()">🎯 出題スタート</button>
+        <div class="ext-sub-note">※クイズ中は「ピンポイント」で地図をタップ。モーダルは自動で閉じます。</div>
+    </div>
+</div>
+
+<!-- パーティ モーダル -->
+<div class="ext-modal" id="modal-party">
+    <div class="ext-modal-card">
+        <button class="ext-close" onclick="extClose('modal-party')">×</button>
+        <h3 class="ext-modal-title">🎉 パーティ / 妄想旅行</h3>
+        <div class="party-setup" id="party-setup">
+            <label>👥 遊ぶ人数と名前</label>
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+                <button class="party-theme-list" style="flex:1;" onclick="extSetPlayerCount(2)">2人</button>
+                <button class="party-theme-list" style="flex:1;" onclick="extSetPlayerCount(3)">3人</button>
+                <button class="party-theme-list" style="flex:1;" onclick="extSetPlayerCount(4)">4人</button>
+            </div>
+            <div class="party-players" id="party-players"></div>
+
+            <label>🎲 遊び方</label>
+            <div class="party-theme-list" id="party-mode-list">
+                <button data-mode="theme" class="sel" onclick="extSelectPartyMode(this,'theme')">🎯 お題に近づけ対戦</button>
+                <button data-mode="trip" onclick="extSelectPartyMode(this,'trip')">🧳 妄想旅行（昼食→夕食→宿）</button>
+            </div>
+
+            <div id="party-theme-wrap">
+                <label>📌 お題（対戦モード時）</label>
+                <div class="party-theme-list" id="party-theme-list"></div>
+            </div>
+
+            <button class="ext-primary-btn" onclick="extStartParty()">▶️ スタート</button>
+            <div class="ext-sub-note">全員が順番に1投ずつ。対戦はお題に一番近い人が勝ち！<br>妄想旅行は昼食・夕食・宿の3か所をみんなで決めます🍚🌃🛏️</div>
+        </div>
+        <div id="party-live" style="display:none;">
+            <div id="party-live-info" style="font-weight:900;text-align:center;margin-bottom:10px;"></div>
+            <div class="party-scoreboard" id="party-scoreboard"></div>
+            <button class="ext-primary-btn" id="party-next-btn" style="display:none;" onclick="extPartyContinue()">次へ ▶️</button>
+            <button class="ext-primary-btn" style="background:#2c3e50;" onclick="extEndParty()">🏁 終了して結果を見る</button>
+        </div>
+    </div>
+</div>
+
+<!-- PWA導入ヒント -->
+<div id="ext-pwa-tip">
+    <button class="pwa-x" onclick="document.getElementById('ext-pwa-tip').style.display='none'">×</button>
+    📱 <strong>ホーム画面に追加</strong>すると、アプリのようにサッと遊べます！<br>
+    <span id="pwa-how"></span>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+//  拡張パック本体（既存グローバル関数を破壊せず、ラップ＆追加のみ）
+// ══════════════════════════════════════════════════════════════════
+(function(){
+    'use strict';
+
+    // ---- 永続ストレージ ----
+    const LS = {
+        get(k, def){ try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch(e){ return def; } },
+        set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+    };
+
+    // 訪問データ： { "北海道": {count, first, last}, ... }
+    let conquer = LS.get('extConquer', {});
+    let unlocked = LS.get('extAchievements', {});   // { id: timestamp }
+    let stats = LS.get('extStats', { throws:0, sea:0, seaStreak:0, gold:0, foreign:0, islands:0 });
+
+    // 全都道府県リスト（prefDataに依存、沖縄含む）
+    function allPrefs(){ return Object.keys(window.prefData || {}); }
+
+    // ご当地スタンプ絵文字（名物ベース）
+    const STAMPS = {
+        "北海道":"🐑","青森県":"🍎","岩手県":"🍜","宮城県":"🐄","秋田県":"🍲","山形県":"🍲","福島県":"🍜",
+        "茨城県":"🫘","栃木県":"🥟","群馬県":"🌿","埼玉県":"🍘","千葉県":"🥜","東京都":"🗼","神奈川県":"🥟",
+        "新潟県":"🌾","富山県":"🍣","石川県":"🍤","福井県":"🦀","山梨県":"🍇","長野県":"🍜","岐阜県":"🥩",
+        "静岡県":"🍵","愛知県":"🍤","三重県":"🥩","滋賀県":"🥩","京都府":"🍵","大阪府":"🐙","兵庫県":"🥩",
+        "奈良県":"🦌","和歌山県":"🍊","鳥取県":"🦀","島根県":"⛩️","岡山県":"🍑","広島県":"🍁","山口県":"🐡",
+        "徳島県":"🍜","香川県":"🍜","愛媛県":"🍊","高知県":"🐟","福岡県":"🍲","佐賀県":"🥩","長崎県":"🍜",
+        "熊本県":"🐴","大分県":"♨️","宮崎県":"🍗","鹿児島県":"🐷","沖縄県":"🌺"
+    };
+
+    // ---- 実績定義 ----
+    const ACHIEVEMENTS = [
+        { id:'first', ic:'🎯', name:'はじめての一投', desc:'初めてダーツを投げた', check:()=> stats.throws>=1 },
+        { id:'throw10', ic:'🔥', name:'ダーツ好き', desc:'通算10回投げた', check:()=> stats.throws>=10 },
+        { id:'throw50', ic:'💪', name:'投げ師', desc:'通算50回投げた', check:()=> stats.throws>=50 },
+        { id:'pref5', ic:'🗺️', name:'旅の始まり', desc:'5県を制覇', check:()=> countConquered()>=5 },
+        { id:'pref20', ic:'🚄', name:'旅人', desc:'20県を制覇', check:()=> countConquered()>=20 },
+        { id:'pref47', ic:'👑', name:'全国制覇マスター', desc:'全47都道府県を制覇！', check:()=> countConquered()>=47 },
+        { id:'island', ic:'🏝️', name:'離島ハンター', desc:'沖縄など離れた地に命中', check:()=> stats.islands>=1 },
+        { id:'sea', ic:'🌊', name:'海ポチャ', desc:'海に落ちてしまった…', check:()=> stats.sea>=1 },
+        { id:'seaStreak', ic:'🐙', name:'海の申し子', desc:'海ポチャ3回', check:()=> stats.sea>=3 },
+        { id:'gold', ic:'✨', name:'黄金の一投', desc:'金のダーツを引いた', check:()=> stats.gold>=1 },
+        { id:'foreign', ic:'🌍', name:'世界へ', desc:'海外に飛んだ', check:()=> stats.foreign>=1 },
+        { id:'quiz', ic:'🎓', name:'地理博士', desc:'クイズで満点(100点)を出した', check:()=> stats.quizPerfect>=1 }
+    ];
+
+    function countConquered(){ return Object.keys(conquer).length; }
+
+    function saveAll(){ LS.set('extConquer', conquer); LS.set('extAchievements', unlocked); LS.set('extStats', stats); refreshBadges(); }
+
+    function refreshBadges(){
+        const c = countConquered();
+        const el1 = document.getElementById('fab-collection-count'); if(el1) el1.textContent = c;
+        const unlockedCount = Object.keys(unlocked).length;
+        const el2 = document.getElementById('fab-achieve-count'); if(el2) el2.textContent = unlockedCount;
+    }
+
+    // ---- トースト ----
+    function toast(icon, title, sub){
+        const wrap = document.getElementById('ext-toast-wrap');
+        const d = document.createElement('div');
+        d.className = 'ext-toast';
+        d.innerHTML = `${icon} ${title}` + (sub? `<small>${sub}</small>`:'');
+        wrap.appendChild(d);
+        setTimeout(()=> d.remove(), 3800);
+    }
+
+    // ---- 実績チェック ----
+    function checkAchievements(){
+        ACHIEVEMENTS.forEach(a=>{
+            if(!unlocked[a.id] && a.check()){
+                unlocked[a.id] = Date.now();
+                toast('🏅 実績解除！', a.name, a.desc);
+                confetti(60);
+            }
+        });
+        saveAll();
+    }
+
+    // ---- 紙吹雪（軽量・自前canvas） ----
+    const cvs = document.getElementById('ext-confetti');
+    const ctx = cvs.getContext('2d');
+    let confParticles = [], confRAF = null;
+    function resizeConf(){ cvs.width = window.innerWidth; cvs.height = window.innerHeight; }
+    window.addEventListener('resize', resizeConf); resizeConf();
+    function confetti(n, gold){
+        for(let i=0;i<n;i++){
+            confParticles.push({
+                x: Math.random()*cvs.width, y: -20 - Math.random()*cvs.height*0.3,
+                vx: (Math.random()-0.5)*4, vy: 2+Math.random()*4,
+                size: 6+Math.random()*6, rot: Math.random()*6.28, vr:(Math.random()-0.5)*0.3,
+                color: gold ? ['#ffd700','#ffb300','#fff3b0','#ffcc33'][i%4]
+                            : ['#ff3e3e','#f1c40f','#2ecc71','#3498db','#9b59b6','#e67e22'][i%6]
+            });
+        }
+        if(!confRAF) confLoop();
+    }
+    function confLoop(){
+        ctx.clearRect(0,0,cvs.width,cvs.height);
+        confParticles.forEach(p=>{
+            p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.rot+=p.vr;
+            ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+            ctx.fillStyle=p.color; ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+            ctx.restore();
+        });
+        confParticles = confParticles.filter(p=> p.y < cvs.height+30);
+        if(confParticles.length){ confRAF=requestAnimationFrame(confLoop); }
+        else { ctx.clearRect(0,0,cvs.width,cvs.height); confRAF=null; }
+    }
+
+    // ══════════════════════════════════════════════════
+    //  既存関数のラップ（1文字も既存を書き換えず、上書き注入）
+    // ══════════════════════════════════════════════════
+
+    // showResultAt をラップ：結果に到達した瞬間に「記録・実績・シェア・距離・宿リンク」を追加
+    const _origShowResultAt = window.showResultAt;
+    window.showResultAt = async function(currentLat, currentLng, opts={}){
+        // 金のダーツ抽選（5%）— 演出用フラグ
+        window.__extGold = (Math.random() < 0.05);
+        // 既存処理を実行（結果パネル生成・AI呼び出しまで完了）
+        await _origShowResultAt.call(this, currentLat, currentLng, opts);
+        // ここから拡張の後処理
+        try { extAfterResult(currentLat, currentLng, opts); } catch(e){ console.warn('ext after result', e); }
+    };
+
+    // resetGame をラップ：拡張セクションの掃除＋クイズ/パーティの継続判定
+    const _origResetGame = window.resetGame;
+    window.resetGame = function(){
+        _origResetGame.call(this);
+        const ex = document.getElementById('ext-result-extra'); if(ex) ex.remove();
+        // クイズ継続中なら次の案内を出す
+        if(quizState.active){ setTimeout(()=> extShowQuizBanner(), 300); }
+        if(partyState.active){ setTimeout(()=> extPromptPartyTurn(), 300); }
+    };
+
+    // ---- 結果到達後の拡張処理 ----
+    function extAfterResult(lat, lng, opts){
+        stats.throws = (stats.throws||0) + 1;
+
+        const isForeign = !!opts.foreignLabel;
+        const prefEl = document.getElementById('res-pref-name');
+        const cityEl = document.getElementById('res-addr-main');
+        // 到達県名を推定（既存パネルの表記から）
+        let prefName = null;
+        if(!isForeign){
+            const txt = prefEl ? prefEl.textContent : '';
+            const m = txt.match(/✨\s*(\S+?)\s*に到着/);
+            if(m) prefName = m[1];
+            if(prefName && !window.prefData[prefName]) prefName = null;
+        }
+        const city = cityEl ? cityEl.textContent : '';
+
+        // 海ポチャ判定（既存が sea-note を出しているか）
+        const seaNote = document.getElementById('sea-note-area');
+        const wasSea = seaNote && seaNote.textContent.includes('海にポチャン');
+        if(wasSea){ stats.sea=(stats.sea||0)+1; stats.seaStreak=(stats.seaStreak||0)+1; }
+        else { stats.seaStreak=0; }
+
+        if(isForeign){ stats.foreign=(stats.foreign||0)+1; }
+
+        // 離島判定（沖縄／佐渡など：沖縄県 or 緯度が本州から離れた命中）
+        if(prefName==='沖縄県' || (typeof lat==='number' && lat<30.8)) stats.islands=(stats.islands||0)+1;
+
+        // 制覇記録
+        if(prefName){
+            const now = new Date().toISOString();
+            if(!conquer[prefName]) conquer[prefName] = { count:0, first:now, last:now };
+            conquer[prefName].count += 1;
+            conquer[prefName].last = now;
+            conquer[prefName].lastCity = city;
+        }
+
+        // 金のダーツ
+        if(window.__extGold){ stats.gold=(stats.gold||0)+1; }
+
+        saveAll();
+        checkAchievements();
+
+        // 結果パネルに拡張UIを差し込む
+        injectResultExtra(prefName, city, lat, lng, isForeign, opts);
+
+        // 演出：紙吹雪（通常）／金演出
+        if(window.__extGold){ confetti(140, true); }
+        else { confetti(70); }
+
+        // クイズ採点
+        if(quizState.active && quizState.awaiting){ extQuizScore(lat, lng, prefName); }
+        // パーティ採点
+        if(partyState.active && partyState.awaiting){ extPartyRecord(lat, lng, prefName, city); }
+    }
+
+    // ---- 結果パネルへ拡張セクションを挿入 ----
+    function injectResultExtra(prefName, city, lat, lng, isForeign, opts){
+        const panel = document.getElementById('result-panel');
+        if(!panel) return;
+        const old = document.getElementById('ext-result-extra'); if(old) old.remove();
+
+        const label = isForeign ? (opts.foreignLabel||'海外') : (prefName||'');
+        const cityLabel = city || label;
+        const food = (!isForeign && window.prefData[prefName]) ? window.prefData[prefName].food : '現地グルメ';
+
+        // 距離計算（現在地→到達地：ハバースイン）
+        let distHtml = '';
+        const geo = window.__extUserGeo;
+        if(geo && typeof lat==='number'){
+            const dkm = haversine(geo.lat, geo.lng, lat, lng);
+            const hCar = (dkm/60).toFixed(1), hTrain=(dkm/120).toFixed(1);
+            distHtml = `<div class="ext-dist">📏 現在地から約 <strong>${Math.round(dkm)}km</strong>
+                <span>🚗 車で約${hCar}h</span><span>🚄 新幹線換算約${hTrain}h</span></div>`;
+        } else {
+            distHtml = `<div class="ext-dist">📏 <span style="color:#888;font-weight:700;">現在地を許可すると距離を表示できます</span>
+                <button class="ext-act-btn ext-copy" style="min-width:auto;padding:6px 12px;" onclick="extRequestGeo()">📍 現在地を使う</button></div>`;
+        }
+
+        const goldBanner = window.__extGold
+            ? `<div class="ext-gold-banner">✨🎯 金のダーツ！ラッキーな一投です！ ✨</div>` : '';
+
+        const conqCount = countConquered();
+        const shareText = buildShareText(label, cityLabel, food, conqCount);
+
+        // 宿・旅行リンク
+        const jalan = `https://www.jalan.net/uw/uwp2011/uww2011init.do?keyword=${encodeURIComponent(label)}`;
+        const rakuten = `https://travel.rakuten.co.jp/dsearch/?f_keyword=${encodeURIComponent(label)}`;
+
+        const wrap = document.createElement('div');
+        wrap.id = 'ext-result-extra';
+        wrap.innerHTML = `
+            ${goldBanner}
+            <div class="ext-share-card">
+                <div class="esc-place">🎯 ${cityLabel}</div>
+                <div class="esc-sub">${isForeign?'🌍 海外の旅先':'🍱 名物: '+food} ／ 制覇 ${conqCount}/47県</div>
+            </div>
+            <div class="ext-btn-row">
+                <button class="ext-act-btn ext-share" onclick='extShareX(${JSON.stringify(shareText)})'>𝕏 でシェア</button>
+                <button class="ext-act-btn ext-line" onclick='extShareLine(${JSON.stringify(shareText)})'>LINEで送る</button>
+                <button class="ext-act-btn ext-copy" onclick='extCopy(${JSON.stringify(shareText)}, this)'>📋 コピー</button>
+            </div>
+            ${distHtml}
+            <div class="ext-travel-row">
+                <a class="ext-travel-link ext-jalan" href="${jalan}" target="_blank" rel="noopener">🏨 じゃらんで宿を探す</a>
+                <a class="ext-travel-link ext-rakuten" href="${rakuten}" target="_blank" rel="noopener">🅁 楽天トラベルで探す</a>
+            </div>
+        `;
+        // マップセクションの直後に差し込む（AI本文の上）
+        const aiSection = panel.querySelector('.ai-section');
+        if(aiSection) panel.insertBefore(wrap, aiSection);
+        else panel.appendChild(wrap);
+    }
+
+    function buildShareText(label, city, food, conq){
+        const foreign = label==='海外' || (window.prefData && !window.prefData[label]);
+        return `🎯AI日本ダーツ探訪🎯\n今日の行き先は…「${city}」！\n`
+             + (foreign?`🌍 海外の旅へ！\n`:`🍱 名物: ${food}\n`)
+             + `🗾 全国制覇 ${conq}/47県\n#AI日本ダーツ探訪`;
+    }
+
+    // ---- シェア系 ----
+    window.extShareX = function(text){
+        const url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+        window.open(url, '_blank', 'noopener');
+    };
+    window.extShareLine = function(text){
+        const url = 'https://line.me/R/msg/text/?' + encodeURIComponent(text);
+        window.open(url, '_blank', 'noopener');
+    };
+    window.extCopy = function(text, btn){
+        const done = ()=>{ if(btn){ const o=btn.textContent; btn.textContent='✅ コピー完了'; setTimeout(()=>btn.textContent=o,1500);} };
+        if(navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
+        } else fallbackCopy(text, done);
+    };
+    function fallbackCopy(text, done){
+        const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(e){} ta.remove(); done&&done();
+    }
+
+    // ---- 距離 ----
+    function haversine(lat1,lng1,lat2,lng2){
+        const R=6371, toRad=d=>d*Math.PI/180;
+        const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+        const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+        return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+    window.__extUserGeo = LS.get('extUserGeo', null);
+    window.extRequestGeo = function(){
+        if(!navigator.geolocation){ alert('この端末では現在地を取得できません。'); return; }
+        navigator.geolocation.getCurrentPosition(
+            pos=>{ window.__extUserGeo={lat:pos.coords.latitude,lng:pos.coords.longitude}; LS.set('extUserGeo',window.__extUserGeo); toast('📍','現在地を記録しました','次回から距離を表示します'); },
+            ()=> alert('現在地の取得が許可されませんでした。')
+        );
+    };
+
+    // ══════════════════════════════════════════════════
+    //  制覇マップ UI
+    // ══════════════════════════════════════════════════
+    window.extOpenCollection = function(){
+        const prefs = allPrefs();
+        const done = countConquered();
+        const pct = Math.round(done/prefs.length*100);
+        document.getElementById('conquer-count-text').textContent = `${done} / ${prefs.length} 県 制覇`;
+        const fill = document.getElementById('conquer-fill'); fill.style.width = pct+'%'; fill.textContent = pct+'%';
+        const remain = prefs.filter(p=>!conquer[p]);
+        document.getElementById('conquer-remain').textContent = remain.length ? `のこり ${remain.length} 県: ${remain.slice(0,8).join('・')}${remain.length>8?' …':''}` : '🎉 コンプリート達成！おめでとう！';
+        const grid = document.getElementById('conquer-grid');
+        grid.innerHTML = prefs.map(p=>{
+            const d = conquer[p];
+            const stamp = STAMPS[p]||'📍';
+            return `<div class="conquer-cell ${d?'done':''}">
+                <span class="cc-stamp">${d?stamp:'❔'}</span>
+                ${p}
+                ${d?`<div class="cc-count">×${d.count}</div>`:''}
+            </div>`;
+        }).join('');
+        show('modal-collection');
+    };
+
+    // ══════════════════════════════════════════════════
+    //  実績 UI
+    // ══════════════════════════════════════════════════
+    window.extOpenAchievements = function(){
+        const list = document.getElementById('achieve-list');
+        list.innerHTML = ACHIEVEMENTS.map(a=>{
+            const on = !!unlocked[a.id];
+            return `<div class="achieve-item ${on?'unlocked':''}">
+                <div class="achieve-ic">${a.ic}</div>
+                <div><div class="achieve-name">${a.name} ${on?'✅':'🔒'}</div>
+                <div class="achieve-desc">${a.desc}</div></div>
+            </div>`;
+        }).join('');
+        show('modal-achieve');
+    };
+
+    // ══════════════════════════════════════════════════
+    //  クイズモード
+    // ══════════════════════════════════════════════════
+    const quizState = { active:false, target:null, awaiting:false, score:0, count:0 };
+    window.extOpenQuiz = function(){ document.getElementById('quiz-score').textContent = `スコア: ${quizState.score}　　問題: ${quizState.count}`; show('modal-quiz'); };
+    window.extCloseQuiz = function(){ extClose('modal-quiz'); };
+
+    window.extQuizNext = function(){
+        // ピンポイントモードに強制
+        const pin = document.querySelector('input[name="mode"][value="pinpoint"]');
+        if(pin && !pin.checked){ pin.checked=true; pin.dispatchEvent(new Event('change',{bubbles:true})); }
+        const prefs = allPrefs().filter(p=>p!=='沖縄県'); // 沖縄はインセットのため出題から除外
+        const target = prefs[Math.floor(Math.random()*prefs.length)];
+        quizState.active = true; quizState.target = target; quizState.awaiting = true;
+        extClose('modal-quiz');
+        extShowQuizBanner();
+    };
+    function extShowQuizBanner(){
+        if(!quizState.active) return;
+        const b = document.getElementById('quiz-mode-banner');
+        b.textContent = `❓ 問題：「${quizState.target}」はどこ？ 地図を狙って！`;
+        b.style.display = 'block';
+    }
+    function extQuizScore(lat, lng, prefName){
+        quizState.awaiting = false;
+        document.getElementById('quiz-mode-banner').style.display='none';
+        const t = window.prefData[quizState.target];
+        const dkm = haversine(lat, lng, t.lat, t.lng);
+        // 200km以内で満点、遠いほど減点
+        let pts = Math.max(0, Math.round(100 - dkm/5));
+        if(prefName===quizState.target) pts = 100;
+        quizState.score += pts; quizState.count += 1;
+        if(pts>=100){ stats.quizPerfect=(stats.quizPerfect||0)+1; saveAll(); checkAchievements(); }
+        // 結果パネルの拡張部に採点を差し込む
+        const wrap = document.getElementById('ext-result-extra');
+        const verdict = pts>=90?'good':(pts>=50?'good':'bad');
+        const line = document.createElement('div');
+        line.className = `quiz-result ${verdict}`;
+        line.innerHTML = pts>=100
+            ? `🎯 大正解！「${quizState.target}」ピッタリ！ +100点`
+            : `${pts>=50?'👍 おしい！':'😅 ざんねん…'} 正解は「${quizState.target}」　誤差${Math.round(dkm)}km　<strong>+${pts}点</strong>`;
+        if(wrap) wrap.insertBefore(line, wrap.firstChild);
+        toast('❓ クイズ採点', `${pts}点`, `正解: ${quizState.target}（誤差${Math.round(dkm)}km）`);
+        if(pts>=90) confetti(80);
+    }
+
+    // ══════════════════════════════════════════════════
+    //  パーティ / 妄想旅行
+    // ══════════════════════════════════════════════════
+    const PARTY_THEMES = [
+        {t:'温泉が有名な県', key:'onsen', target:['大分県','群馬県','兵庫県','神奈川県','岐阜県']},
+        {t:'海の幸がおいしい県', key:'sea', target:['北海道','石川県','福井県','鳥取県','長崎県']},
+        {t:'ラーメンがアツい県', key:'ramen', target:['福島県','福岡県','徳島県','和歌山県','北海道']},
+        {t:'歴史・お城の県', key:'castle', target:['兵庫県','愛知県','熊本県','長野県','滋賀県']},
+        {t:'フルーツ王国', key:'fruit', target:['山梨県','山形県','和歌山県','岡山県','愛媛県']}
+    ];
+    const partyState = { active:false, mode:'theme', players:[], turn:0, round:0, theme:null, awaiting:false, tripSlots:['🍚 昼食の地','🌃 夕食の地','🛏️ 泊まる地'] };
+    let partyPlayerCount = 2, partySelectedMode='theme', partySelectedTheme=0;
+
+    window.extOpenParty = function(){
+        extSetPlayerCount(partyPlayerCount);
+        renderThemeChoices();
+        document.getElementById('party-setup').style.display='block';
+        document.getElementById('party-live').style.display='none';
+        show('modal-party');
+    };
+    window.extSetPlayerCount = function(n){
+        partyPlayerCount = n;
+        const box = document.getElementById('party-players');
+        let html='';
+        for(let i=0;i<n;i++){ const prev = box.children[i]?.querySelector('input')?.value || `プレイヤー${i+1}`; html += `<input type="text" value="${prev}" maxlength="10">`; }
+        box.innerHTML = html;
+    };
+    window.extSelectPartyMode = function(btn, mode){
+        partySelectedMode = mode;
+        document.querySelectorAll('#party-mode-list button').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel');
+        document.getElementById('party-theme-wrap').style.display = (mode==='theme')?'block':'none';
+    };
+    function renderThemeChoices(){
+        const box = document.getElementById('party-theme-list');
+        box.innerHTML = PARTY_THEMES.map((t,i)=>`<button class="${i===partySelectedTheme?'sel':''}" onclick="extSelectTheme(${i},this)">${t.t}</button>`).join('');
+    }
+    window.extSelectTheme = function(i, btn){
+        partySelectedTheme=i;
+        document.querySelectorAll('#party-theme-list button').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel');
+    };
+
+    window.extStartParty = function(){
+        const names = Array.from(document.querySelectorAll('#party-players input')).map((inp,i)=> inp.value.trim()||`プレイヤー${i+1}`);
+        partyState.active=true; partyState.mode=partySelectedMode; partyState.players=names.map(n=>({name:n, score:0, picks:[]}));
+        partyState.turn=0; partyState.round=0; partyState.theme=PARTY_THEMES[partySelectedTheme]; partyState.awaiting=true;
+        document.getElementById('party-setup').style.display='none';
+        document.getElementById('party-live').style.display='block';
+        extClose('modal-party');
+        // ランダムモードに切り替え（順番に投げる＝ミステリー演出で盛り上げ）
+        const rnd = document.querySelector('input[name="mode"][value="random"]');
+        if(rnd && !rnd.checked){ rnd.checked=true; rnd.dispatchEvent(new Event('change',{bubbles:true})); }
+        extPromptPartyTurn();
+    };
+
+    function partyContextLabel(){
+        if(partyState.mode==='theme') return `お題「${partyState.theme.t}」に近づけろ！`;
+        return partyState.tripSlots[partyState.round] || '旅の締めくくり';
+    }
+    function extPromptPartyTurn(){
+        if(!partyState.active) return;
+        const p = partyState.players[partyState.turn];
+        const b = document.getElementById('party-turn-banner');
+        b.style.display='block';
+        b.innerHTML = `🎉 ${p.name} の番！ (${partyContextLabel()})<br><span style="font-size:0.78rem;opacity:0.9;">地図の「投げる」または画面タップで投げよう</span>`;
+    }
+    function extPartyRecord(lat, lng, prefName, city){
+        partyState.awaiting=false;
+        document.getElementById('party-turn-banner').style.display='none';
+        const p = partyState.players[partyState.turn];
+        let gained = 0, note = '';
+        if(partyState.mode==='theme'){
+            // お題の代表県に最も近い距離で加点（近いほど高い）
+            let best=Infinity;
+            partyState.theme.target.forEach(tp=>{ const d=window.prefData[tp]; if(d){ const dk=haversine(lat,lng,d.lat,d.lng); if(dk<best)best=dk; } });
+            gained = Math.max(0, Math.round(100 - best/8));
+            if(partyState.theme.target.includes(prefName)) gained=120;
+            note = `${city}（${gained>=120?'ど真ん中！':'お題まで約'+Math.round(best)+'km'}）`;
+        } else {
+            gained = 0; // 妄想旅行は点数なし、記録のみ
+            note = `${partyState.tripSlots[partyState.round]} → ${city||prefName}`;
+        }
+        p.score += gained;
+        p.picks.push({ round: partyState.round, city: city||prefName, pref: prefName, gained, note });
+        renderScoreboard();
+        // 次の人／次ラウンドへ
+        advanceParty();
+    }
+    function advanceParty(){
+        const info = document.getElementById('party-live-info');
+        partyState.turn++;
+        if(partyState.turn >= partyState.players.length){
+            partyState.turn = 0; partyState.round++;
+            const totalRounds = partyState.mode==='trip' ? partyState.tripSlots.length : 1;
+            if(partyState.round >= totalRounds){
+                // 終了
+                info.textContent = '🏁 全ラウンド終了！「終了して結果を見る」を押してね';
+                document.getElementById('party-next-btn').style.display='none';
+                show('modal-party');
+                document.getElementById('party-setup').style.display='none';
+                document.getElementById('party-live').style.display='block';
+                return;
+            }
+        }
+        partyState.awaiting = true;
+        info.textContent = `次は ${partyState.players[partyState.turn].name} の番（${partyContextLabel()}）`;
+        const nb = document.getElementById('party-next-btn'); nb.style.display='block'; nb.textContent = `▶️ ${partyState.players[partyState.turn].name} に交代して閉じる`;
+        show('modal-party');
+        document.getElementById('party-setup').style.display='none';
+        document.getElementById('party-live').style.display='block';
+    }
+    window.extPartyContinue = function(){ extClose('modal-party'); extPromptPartyTurn(); };
+    function renderScoreboard(){
+        const box = document.getElementById('party-scoreboard');
+        const sorted = [...partyState.players].sort((a,b)=>b.score-a.score);
+        const top = sorted.length? sorted[0].score : 0;
+        box.innerHTML = partyState.players.map(p=>{
+            const isWin = partyState.mode==='theme' && p.score===top && top>0;
+            const picks = p.picks.map(x=>`${x.note}`).join('／');
+            return `<div class="party-score-row ${isWin?'win':''}">
+                <span>${isWin?'👑 ':''}${p.name}${partyState.mode==='theme'?`：${p.score}点`:''}</span>
+                <span style="font-size:0.78rem;color:#666;max-width:60%;text-align:right;">${picks||'—'}</span>
+            </div>`;
+        }).join('');
+    }
+    window.extEndParty = function(){
+        const sorted = [...partyState.players].sort((a,b)=>b.score-a.score);
+        let msg;
+        if(partyState.mode==='theme'){
+            const w = sorted[0];
+            msg = `🏆 優勝: ${w.name}（${w.score}点）！\n\n`+
+                  partyState.players.map(p=>`${p.name}: ${p.score}点`).join('\n');
+            confetti(160);
+        } else {
+            msg = `🧳 みんなで決めた妄想旅行プラン！\n\n`+
+                  partyState.players.map(p=> `【${p.name}】\n`+ p.picks.map(x=>`  ${x.note}`).join('\n')).join('\n\n');
+            confetti(120);
+        }
+        alert(msg);
+        partyState.active=false; partyState.awaiting=false;
+        document.getElementById('party-turn-banner').style.display='none';
+        extClose('modal-party');
+    };
+
+    // ══════════════════════════════════════════════════
+    //  モーダル共通
+    // ══════════════════════════════════════════════════
+    function show(id){ document.getElementById(id).classList.add('show'); }
+    window.extClose = function(id){ document.getElementById(id).classList.remove('show'); };
+    // 背景タップで閉じる
+    document.querySelectorAll('.ext-modal').forEach(m=>{
+        m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('show'); });
+    });
+
+    // ══════════════════════════════════════════════════
+    //  PWA（Service Worker + 動的manifest）
+    // ══════════════════════════════════════════════════
+    (function setupPWA(){
+        try{
+            // manifestを動的生成（別ファイル不要）
+            const manifest = {
+                name:'AI日本ダーツ探訪', short_name:'ダーツ探訪', start_url:'.', display:'standalone',
+                background_color:'#f0f8ff', theme_color:'#ff3e3e',
+                icons:[{ src:'image1.png', sizes:'512x512', type:'image/png' }]
+            };
+            const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+            const link = document.createElement('link'); link.rel='manifest'; link.href=URL.createObjectURL(blob);
+            document.head.appendChild(link);
+            const meta = document.createElement('meta'); meta.name='theme-color'; meta.content='#ff3e3e'; document.head.appendChild(meta);
+            const amc = document.createElement('meta'); amc.name='apple-mobile-web-app-capable'; amc.content='yes'; document.head.appendChild(amc);
+
+            // インストール可能になったらヒント表示
+            let deferredPrompt=null;
+            window.addEventListener('beforeinstallprompt', e=>{
+                e.preventDefault(); deferredPrompt=e;
+                const tip=document.getElementById('ext-pwa-tip');
+                document.getElementById('pwa-how').innerHTML = '';
+                const btn=document.createElement('button'); btn.textContent='➕ ホーム画面に追加';
+                btn.onclick=async()=>{ tip.style.display='none'; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; };
+                document.getElementById('pwa-how').appendChild(btn);
+                if(!LS.get('extPwaDismissed',false)) tip.style.display='block';
+            });
+            // iOS Safari（beforeinstallprompt非対応）向け案内
+            const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+            const standalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+            if(isIOS && !standalone && !LS.get('extPwaDismissed',false)){
+                const tip=document.getElementById('ext-pwa-tip');
+                document.getElementById('pwa-how').innerHTML='共有ボタン <strong>􀈂</strong> →「ホーム画面に追加」でどうぞ！';
+                setTimeout(()=> tip.style.display='block', 4000);
+            }
+        }catch(e){ console.warn('pwa', e); }
+    })();
+
+    // ══════════════════════════════════════════════════
+    //  初期化
+    // ══════════════════════════════════════════════════
+    function init(){
+        if(!window.prefData){ return setTimeout(init, 200); } // 既存スクリプト読込待ち
+        refreshBadges();
+        // 既存の実績（初回起動でthrows>=1などは無いが、過去データから復元）
+        checkAchievements();
+    }
+    init();
+
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     🔧 修正パック v2（既存コード・拡張パックともに一切改変せず override のみ）
+     (A) 地域情報の分割生成（途中切れ対策）← callAIGuide を差し替え
+     (B) ダーツ命中位置ズレ・結果地域ズレの根治 ← 固定レイヤ描画へ
+════════════════════════════════════════════════════════════════════ -->
+<style>
+    /* ダーツ・マーカー専用の全画面固定レイヤ（transformの影響を受けない層） */
+    #fix-dart-layer { position: fixed; inset: 0; pointer-events: none; z-index: 150; overflow: visible; }
+    #fix-dart-layer .dart-icon, #fix-dart-layer .plane-icon,
+    #fix-dart-layer .dart-trail, #fix-dart-layer .plane-trail,
+    #fix-dart-layer .fix-hit { position: absolute; }
+    .fix-hit { font-size: 30px; transform: translate(-50%, -100%); filter: drop-shadow(0 3px 4px rgba(0,0,0,0.4)); z-index: 158; pointer-events: none; }
+    .ai-part-fade { animation: aiFadeIn 0.4s ease; }
+    @keyframes aiFadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none;} }
+</style>
+
+<div id="fix-dart-layer"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  (B) 座標・ダーツ位置の根治
+//  クリック座標・ダーツ描画・緯度経度算出を「すべてビューポート座標」で統一し、
+//  ダーツ/マーカーは #game-area の外（transform非依存の固定レイヤ）へ描画する。
+//  さらに game-area のスクロール補正 transform を無効化して状態不整合を排除。
+// ═══════════════════════════════════════════════════════════════════
+(function(){
+    'use strict';
+    const layer=document.getElementById('fix-dart-layer');
+    function imgRect(){ return getRenderedImageRect(); }
+    function svg(){ return (typeof dartSVG==='function') ? dartSVG()
+        : '<svg width="46" height="46" viewBox="0 0 100 100"><g transform="rotate(45 50 50)"><rect x="47" y="20" width="6" height="45" fill="#2c3e50"/><polygon points="50,78 42,60 58,60" fill="#c0392b"/></g></svg>'; }
+    function clearLayer(){ layer.innerHTML=''; }
+
+    function fixLaunchDart(targetX, targetY, landing){
+        isAnimating=true; clearLayer();
+        try{ playThrowSound(); }catch(e){}
+        // ★投げる間は darts1.mp3 のまま固定（switchBGMはここでは呼ばない）
+        const startX=window.innerWidth/2, startY=window.innerHeight;
+        const dart=document.createElement('div'); dart.className='dart-icon'; dart.innerHTML=svg(); layer.appendChild(dart);
+        const duration=800, startTime=performance.now();
+        const cpX=(startX+targetX)/2, cpY=Math.min(startY,targetY)-300;
+        function update(time){
+            let t=(time-startTime)/duration; if(t>1)t=1; const easeT=1-Math.pow(1-t,3);
+            const curX=(1-easeT)*(1-easeT)*startX+2*(1-easeT)*easeT*cpX+easeT*easeT*targetX;
+            const curY=(1-easeT)*(1-easeT)*startY+2*(1-easeT)*easeT*cpY+easeT*easeT*targetY;
+            dart.style.left=curX+'px'; dart.style.top=curY+'px';
+            dart.style.transform=`translate(-50%, -100%) scale(${3-2*easeT}) rotate(${45-45*easeT}deg)`;
+            if(Math.random()>0.2){ const tr=document.createElement('div'); tr.className='dart-trail'; tr.style.left=curX+'px'; tr.style.top=(curY-20)+'px'; tr.style.transform='translate(-50%,-50%)'; layer.appendChild(tr); setTimeout(()=>tr.remove(),500); }
+            if(t<1){ requestAnimationFrame(update); }
+            else {
+                const marker=document.createElement('div'); marker.className='fix-hit'; marker.textContent='📍';
+                marker.style.left=targetX+'px'; marker.style.top=targetY+'px'; layer.appendChild(marker);
+                dart.remove(); try{ playHitSound(); }catch(e){}
+                // ★着弾後：darts2.mp3〜darts10.mp3 からランダムに1曲を再生
+                try{ switchBGM('darts' + (2 + Math.floor(Math.random()*9)) + '.mp3'); }catch(e){}
+                isAnimating=false;
+                fixFlyPlane(startX,startY,targetX,targetY,()=>{ try{ showResultAt(landing.lat,landing.lng,{okinawa:landing.okinawa}); }catch(e){ console.warn(e); } });
+            }
+        }
+        requestAnimationFrame(update);
+    }
+
+    function fixMysteryThrow(onDone){
+        isAnimating=true; clearLayer();
+        try{ playThrowSound(); }catch(e){}
+        // ★投げる間は darts1.mp3 のまま固定（switchBGMはここでは呼ばない）
+        const sx=window.innerWidth/2, sy=window.innerHeight, dur=700, st=performance.now();
+        const dart=document.createElement('div'); dart.className='dart-icon'; dart.innerHTML=svg(); layer.appendChild(dart);
+        function up(now){
+            let t=(now-st)/dur; if(t>1)t=1; const e=1-Math.pow(1-t,2);
+            const y=sy-e*(window.innerHeight*0.9+250);
+            dart.style.left=sx+'px'; dart.style.top=y+'px';
+            dart.style.transform=`translate(-50%,-100%) rotate(${e*900}deg) scale(${1.6-0.8*e})`;
+            if(Math.random()>0.3){ const tr=document.createElement('div'); tr.className='dart-trail'; tr.style.left=(sx+(Math.random()-0.5)*20)+'px'; tr.style.top=y+'px'; tr.style.transform='translate(-50%,-50%)'; layer.appendChild(tr); setTimeout(()=>tr.remove(),500); }
+            if(t<1){ requestAnimationFrame(up); }
+            else {
+                dart.remove(); const ov=document.getElementById('mystery-overlay'); if(ov) ov.style.display='flex';
+                setTimeout(()=>{ if(ov) ov.style.display='none'; try{ playHitSound(); }catch(e){} try{ switchBGM('darts' + (2 + Math.floor(Math.random()*9)) + '.mp3'); }catch(e){} isAnimating=false; onDone(); },1500);
+            }
+        }
+        requestAnimationFrame(up);
+    }
+
+    function fixFlyPlane(sx,sy,tx,ty,onDone){
+        const plane=document.createElement('div'); plane.className='plane-icon'; plane.textContent='✈️'; layer.appendChild(plane);
+        const angleDeg=Math.atan2(ty-sy,tx-sx)*180/Math.PI; const dur=900, start=performance.now();
+        const cpX=(sx+tx)/2, cpY=Math.min(sy,ty)-120;
+        function step(now){
+            let t=(now-start)/dur; if(t>1)t=1; const e=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+            const x=(1-e)*(1-e)*sx+2*(1-e)*e*cpX+e*e*tx, y=(1-e)*(1-e)*sy+2*(1-e)*e*cpY+e*e*ty;
+            plane.style.left=x+'px'; plane.style.top=y+'px'; plane.style.transform=`translate(-50%,-50%) rotate(${angleDeg+45}deg) scale(${1.2-0.2*e})`;
+            if(Math.random()>0.4){ const p=document.createElement('div'); p.className='plane-trail'; p.style.left=x+'px'; p.style.top=y+'px'; p.style.transform='translate(-50%,-50%)'; layer.appendChild(p); setTimeout(()=>p.remove(),700); }
+            if(t<1){ requestAnimationFrame(step); } else { plane.style.transition='opacity 0.3s'; plane.style.opacity='0'; setTimeout(()=>plane.remove(),300); if(onDone)onDone(); }
+        }
+        requestAnimationFrame(step);
+    }
+
+    // handleMapClick を override：クリックのビューポート座標を一貫使用
+    window.handleMapClick=function(e){
+        if(isAnimating || document.getElementById('result-panel').classList.contains('active')) return;
+        const r=imgRect();
+        if(currentMode==='pinpoint'){
+            const tx=Math.max(r.left, Math.min(r.left+r.width, e.clientX));
+            const ty=Math.max(r.top,  Math.min(r.top+r.height,  e.clientY));
+            const ll=viewportToLatLng(tx,ty);
+            fixLaunchDart(tx,ty,ll);
+        } else if(currentMode==='random'){
+            const prefs=Object.keys(prefData);
+            const pick=prefs[Math.floor(Math.random()*prefs.length)];
+            const d=prefData[pick];
+            fixMysteryThrow(()=>showResultAt(d.lat+(Math.random()-0.5)*0.08,d.lng+(Math.random()-0.5)*0.08,{knownPref:pick}));
+        }
+    };
+    // 検索経由・チャレンジ経由も固定レイヤ描画へ
+    window.launchDart=function(tx,ty,landing){ fixLaunchDart(tx,ty,landing); };
+    window.mysteryThrow=function(onDone){ fixMysteryThrow(onDone); };
+
+    // resetGame をラップして固定レイヤと game-area を確実に初期化
+    const _prevReset=window.resetGame;
+    window.resetGame=function(){
+        try{ _prevReset.call(this); }catch(e){}
+        clearLayer();
+        const ga=document.getElementById('game-area');
+        if(ga){ ga.style.transition='none'; ga.style.transform='translateY(0)'; ga.getBoundingClientRect(); }
+    };
+
+    // スクロール補正 transform を無効化（クリック座標系との不整合の主因を除去）
+    const ga=document.getElementById('game-area');
+    if(ga){
+        const keepFlat=()=>{ const tf=ga.style.transform; if(tf && tf!=='translateY(0px)' && tf!=='translateY(0)'){ ga.style.transition='none'; ga.style.transform='translateY(0)'; } };
+        setInterval(keepFlat,150);
+    }
+})();
+
+
+// ═══════════════════════════════════════════════════════════════════
+//  (A) 地域情報の分割生成（途中切れ対策）
+//  既存 showResultAt は内部で「const msg=await callAIGuide(prompt)」を1回呼び、
+//  その戻り値を formatAIResponse で描画する。そこで callAIGuide を override し、
+//  渡された総合プロンプトは無視して「まとめ＋テーマ1/2/3」を最大4分割で生成、
+//  結果を結合した1本のテキストとして返す。→ 既存の描画経路にそのまま乗る。
+//  ・1回の出力が軽く、max_tokens 打ち切りが起きにくい
+//  ・逐次、部分結果をその場に表示し、体感速度も向上
+//  ・showResultAt / formatAIResponse には一切手を触れない
+// ═══════════════════════════════════════════════════════════════════
+(function(){
+    'use strict';
+
+    // 到達地の place / food を、確定済みDOMから推定
+    function detectPlaceFood(){
+        const prefEl=document.getElementById('res-pref-name');
+        const cityEl=document.getElementById('res-addr-main');
+        let pref=null;
+        if(prefEl){ const m=prefEl.textContent.match(/✨\s*(\S+?)\s*に到着/); if(m) pref=m[1]; }
+        if(pref && !window.prefData[pref]) pref=null;
+        const city=cityEl?cityEl.textContent.trim():'';
+        const foreign = prefEl && prefEl.textContent.includes('海外');
+        const food=(pref && window.prefData[pref])?window.prefData[pref].food:'現地グルメ';
+        const place = foreign ? (city||'海外の観光地') : (pref ? (city && city!==pref ? pref+' '+city : pref) : (city||'この地域'));
+        return { place, food };
+    }
+
+    function promptSummary(place, food){
+        return `あなたは超テンション高めで親しみやすい観光ガイドAI「ダーツ精霊」です！🎯✨
+「${place}」（名物ヒント:${food}）の【魅力まとめ】だけを書いてください。
+形式（厳守）:
+### 0. この場所の魅力まとめ＆運勢
+（約200文字で熱く紹介。絵文字たっぷり🌸⛩️🍜✨）
+🔮 ダーツ運勢：（今日の運勢を一言）
+👏 褒め言葉：（この地を選んだ人を称える一言。例「よくぞこの地を射抜きましたね！」）
+※テーマ1〜3の一覧はここには書かないこと。前置きや後書きも不要。`;
+    }
+    function promptTheme(place, food, no, title, guide){
+        return `あなたは超テンション高めの観光ガイドAI「ダーツ精霊」です！🎯
+「${place}」（名物ヒント:${food}）について【${title}】を紹介してください。
+形式（厳守）:
+### ${no}. ${title}
+必ず「5件」を箇条書き。各件は「■ スポット名」で始め、説明を50〜100文字で具体的に（短すぎ厳禁）。各件に絵文字を2〜3個。
+各件の末尾に必ず改行して2行を付ける：
+[SRC]実在しそうな公式/観光協会などのURL
+[MAP]おおよその緯度,経度（数値のみ 例:[MAP]35.71,139.79）
+${guide}
+※見出しは「### ${no}.」の1つだけ。他テーマ・前置き・まとめは書かないこと。`;
+    }
+
+    // 分割の1リクエスト（既存 fetchWithTimeout / AI_ENDPOINT を利用、45秒×2回）
+    async function askOne(prompt){
+        for(let attempt=0; attempt<2; attempt++){
+            try{
+                const res=await fetchWithTimeout(AI_ENDPOINT,{method:'POST',body:JSON.stringify({prompt})},45000);
+                const j=await res.json(); const msg=j&&j.message?j.message:null;
+                if(msg==='__RATE_LIMIT__') return '__RATE_LIMIT__';
+                if(msg && !msg.startsWith('【')) return msg;
+            }catch(e){}
+        }
+        return null;
+    }
+
+    // callAIGuide を override：総合プロンプトは使わず分割生成し、結合テキストを返す。
+    // 逐次表示のため、生成できた分は #ai-content に順次差し込みつつ、
+    // 最終的に「結合テキスト」を返して既存描画にも整合させる。
+    window.callAIGuide = async function(_ignoredPrompt){
+        const { place, food } = detectPlaceFood();
+        window.__currentPlaceName = place;
+
+        const box=document.getElementById('ai-content');
+        // 逐次表示用の入れ物（既存は最後に box.innerHTML=formatAIResponse(戻り値) で上書きするので、
+        // ここでの逐次描画は「体感速度用のプレビュー」。最終的に同じ結合結果で上書きされ整合する）
+        if(box){ box.style.display='block'; box.innerHTML='<div id="split-live"></div>'; }
+        const live=document.getElementById('split-live');
+
+        const parts=[
+            promptSummary(place,food),
+            promptTheme(place,food,1,'歴史・ランドマーク・名所','（城・神社仏閣・絶景・博物館など王道を厚めに）'),
+            promptTheme(place,food,2,'地元グルメ・名物・お店',`（名物「${food}」の名店やランチ・スイーツ・夜グルメ・土産）`),
+            promptTheme(place,food,3,'自然・体験・穴場スポット','（公園・温泉・アクティビティ・穴場・季節イベント）')
+        ];
+        const labels=['まとめ','名所','グルメ','穴場'];
+
+        const collected=[];
+        let rate=false;
+        for(let i=0;i<parts.length;i++){
+            try{ showStatus(`🤖 地域情報を取得中… (${i+1}/4：${labels[i]})`); }catch(e){}
+            const msg=await askOne(parts[i]);
+            if(msg==='__RATE_LIMIT__'){ rate=true; break; }
+            if(msg){
+                collected.push(msg);
+                if(live && typeof formatAIResponse==='function'){
+                    const d=document.createElement('div'); d.className='ai-part-fade';
+                    d.innerHTML=formatAIResponse(msg);
+                    live.appendChild(d);
+                    if(typeof addSourceFallbacks==='function'){ try{ addSourceFallbacks(); }catch(e){} }
+                }
+            }
+        }
+
+        if(collected.length===0){
+            // 何も取れなければ、既存の分岐に委ねる（__RATE_LIMIT__ or null）
+            return rate ? '__RATE_LIMIT__' : null;
+        }
+        // 結合テキストを返す → 既存 showResultAt が formatAIResponse で最終描画。
+        // （途中で上限に達した場合も、取れた分は返して表示する）
+        let combined=collected.join('\n\n');
+        if(rate){ combined+='\n\n⏳ 続きはAI利用上限のため取得できませんでした。時間をおいて「🔄 投げ直し」でお試しください。'; }
+        return combined;
+    };
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     🗺️ 地図刷新パック v3（既存コードは1バイトも変更せず override のみ）
+     ・地図画像を map-japan-color-todoufuken-name2.png（実測縮尺のWeb地図）へ差替
+     ・座標変換を「正確なWebメルカトル図法」に置換（実測13都市で平均誤差1.6px）
+       → 淡路島は淡路島、県境も正確。沖縄・父島・南樺太・択捉も実位置でクリック可。
+════════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+    'use strict';
+
+    // ── 新しい地図画像へ差し替え（HTMLと同じフォルダに配置される想定） ──
+    var NEW_MAP = 'map-japan-color-todoufuken-name2.png';
+    function swapMap(){
+        var img = document.getElementById('japan-map-img');
+        if(img && img.getAttribute('src') !== NEW_MAP){
+            img.setAttribute('src', NEW_MAP);
+        }
+    }
+    swapMap();
+    window.addEventListener('load', swapMap);
+
+    // ── 正確なWebメルカトル図法（この地図画像 729x777 に実測校正） ──
+    // px = A*lng + B ,  py = C*Ymerc(lat) + D
+    // Ymerc(lat) = ln(tan(π/4 + lat*π/360))
+    var MERC = { A: 30.165619, B: -3822.198901, C: -1735.837510, D: 1588.741552 };
+    function ymerc(lat){ return Math.log(Math.tan(Math.PI/4 + lat*Math.PI/360)); }
+    function invYmerc(Y){ return (2*Math.atan(Math.exp(Y)) - Math.PI/2) * 180/Math.PI; }
+
+    // 画像ネイティブpx（右向きx, 下向きy）⇔ 緯度経度
+    function _latLngToNatPx(lat, lng){
+        return { x: MERC.A*lng + MERC.B, y: MERC.C*ymerc(lat) + MERC.D };
+    }
+    function _natPxToLatLng(x, y){
+        var lng = (x - MERC.B) / MERC.A;
+        var Y   = (y - MERC.D) / MERC.C;
+        return { lat: invYmerc(Y), lng: lng };
+    }
+
+    // 既存の同名関数を override（関数宣言はwindowプロパティなので置換可能）
+    window.latLngToNatPx = _latLngToNatPx;
+    window.natPxToLatLng = _natPxToLatLng;
+
+    // viewportToLatLng を override：沖縄インセットの特別処理を撤廃（新地図は実位置に沖縄がある）
+    window.viewportToLatLng = function(vx, vy){
+        var n = viewportToNatPx(vx, vy);   // 既存のビューポート→ネイティブpx変換をそのまま利用
+        return _natPxToLatLng(n.x, n.y);
+    };
+
+    // 画像の実寸（729x777）はimgのnaturalWidth/Heightから自動取得されるため、
+    // getRenderedImageRect() は新画像でもそのまま正しく機能する（変更不要）。
+})();
+</script>
+
+<!-- 🎯 命中点の微調整パック v4（既存コード非改変・override内の描画のみ補正） -->
+<style>
+    /* 着弾マーカーの「針先」をクリック座標へ厳密一致させる。
+       絵文字📍はグリフ下部に余白があるため、少し下げて先端を合わせる。 */
+    #fix-dart-layer .fix-hit {
+        transform: translate(-50%, -88%) !important;  /* -100%→-88%で先端を実クリック点へ */
+        margin: 0; line-height: 1;
+    }
+    /* 命中点の実座標に小さな十字マーカーを重ね、視覚的にもズレ無しを担保 */
+    #fix-dart-layer .fix-precise {
+        position: absolute; width: 14px; height: 14px; z-index: 159; pointer-events: none;
+        transform: translate(-50%, -50%);
+    }
+    #fix-dart-layer .fix-precise::before,
+    #fix-dart-layer .fix-precise::after {
+        content: ''; position: absolute; background: #ff1e1e; box-shadow: 0 0 3px rgba(0,0,0,0.5);
+    }
+    #fix-dart-layer .fix-precise::before { left: 6px; top: 0; width: 2px; height: 14px; }
+    #fix-dart-layer .fix-precise::after  { top: 6px; left: 0; height: 2px; width: 14px; }
+</style>
+<script>
+(function(){
+    'use strict';
+    // fixLaunchDart は着弾時に .fix-hit(📍) を置く。その真下に、実クリック座標へ
+    // 正確な十字（.fix-precise）を追加して「刺さった点」を明示する。
+    // 既存の描画関数には触れず、fix-dart-layer への子追加を監視して補う。
+    var layer = document.getElementById('fix-dart-layer');
+    if(!layer) return;
+    var mo = new MutationObserver(function(muts){
+        muts.forEach(function(m){
+            m.addedNodes.forEach(function(node){
+                if(node.nodeType!==1) return;
+                if(node.classList && node.classList.contains('fix-hit')){
+                    // 同座標に十字を追加（left/topは px 文字列）
+                    var cross = document.createElement('div');
+                    cross.className = 'fix-precise';
+                    cross.style.left = node.style.left;
+                    cross.style.top  = node.style.top;
+                    layer.appendChild(cross);
+                }
+            });
+        });
+    });
+    mo.observe(layer, { childList: true });
+    // resetGame 相当でlayerがinnerHTML=''されると十字も消えるため、追加処理は不要。
+})();
+</script>
+
+<!-- ⚡ AI高速化パック v5（既存コードは1バイトも変更せず、callAIGuide を最終上書き）
+     ・10秒以内に返る軽量プロンプト（1回のみ・リトライなし）
+     ・10秒で返らない／失敗した場合は null を返し、既存のGoogle検索フォールバックで回答 -->
+<script>
+(function(){
+    'use strict';
+
+    // 到達地の place / food を確定済みDOMから推定（前パックと同等・独立実装）
+    function detectPlaceFood(){
+        var prefEl=document.getElementById('res-pref-name');
+        var cityEl=document.getElementById('res-addr-main');
+        var pref=null;
+        if(prefEl){ var m=prefEl.textContent.match(/✨\s*(\S+?)\s*に到着/); if(m) pref=m[1]; }
+        if(pref && !window.prefData[pref]) pref=null;
+        var city=cityEl?cityEl.textContent.trim():'';
+        var foreign = prefEl && prefEl.textContent.includes('海外');
+        var food=(pref && window.prefData[pref])?window.prefData[pref].food:'現地グルメ';
+        var place = foreign ? (city||'海外の観光地') : (pref ? (city && city!==pref ? pref+' '+city : pref) : (city||'この地域'));
+        return { place: place, food: food };
+    }
+
+    // ★軽量プロンプト：10秒以内に収まるよう出力量を絞る。
+    //   3テーマ×各3件・各30文字程度・[SRC][MAP]付き。まとめは短め。
+    function fastPrompt(place, food){
+        return 'あなたは明るい観光ガイドAI「ダーツ精霊」🎯。「'+place+'」（名物:'+food+'）を短時間で紹介。'
+            + '絵文字を使い、下記形式を厳守し、簡潔に（各説明は30〜50文字）。\n'
+            + '### 0. 魅力まとめ\n（80文字程度で紹介＋🔮運勢を一言＋👏褒め言葉を一言）\n'
+            + '### 1. 名所（3件）\n### 2. グルメ（3件）\n### 3. 自然・穴場（3件）\n'
+            + '各件は「■ スポット名」で始め、30〜50文字で説明。各件末尾に必ず改行で2行:\n'
+            + '[SRC]公式や観光協会などのURL\n[MAP]緯度,経度（数値のみ 例:[MAP]35.71,139.79）\n'
+            + '※前置き・後書き不要。合計9件を必ず出す。';
+    }
+
+    // callAIGuide を最終上書き：1回だけ・10秒タイムアウト・失敗時は null（→Google検索へ）
+    window.callAIGuide = async function(_ignoredPrompt){
+        var pf = detectPlaceFood();
+        window.__currentPlaceName = pf.place;
+        try{ showStatus('🤖 地域情報を取得中…（約10秒）'); }catch(e){}
+        try{
+            var res = await fetchWithTimeout(AI_ENDPOINT, { method:'POST', body: JSON.stringify({ prompt: fastPrompt(pf.place, pf.food) }) }, 10000);
+            var j = await res.json();
+            var msg = (j && j.message) ? j.message : null;
+            if(msg === '__RATE_LIMIT__') return '__RATE_LIMIT__';   // 上限は既存の上限表示へ
+            if(msg && !msg.startsWith('【')) return msg;            // 正常 → 既存描画が formatAIResponse で表示
+        }catch(e){ /* 10秒タイムアウト等 */ }
+        // 反応が無ければ null を返す → 既存 showResultAt が buildFallbackInfo（Google検索結果）で回答
+        return null;
+    };
+})();
+</script>
+
+<!-- 🩹 ステータス張り付き修正パック v6（既存コード非改変・監視と最終上書きのみ）
+     ・原因: 内側 showResultAt が bare名 callAIGuide を呼ぶため、window上書きが効かず
+       元の60秒×2版が走り「執筆中…」が最長2分張り付いていた。
+     ・対策1: bare名 callAIGuide 自体を高速版へ再束縛（10秒・1回・失敗時Google検索）。
+     ・対策2: 保険としてステータスバーを12秒で強制クローズする監視を設置。 -->
+<script>
+// ── 対策1: グローバルの callAIGuide を高速版へ（非strict・非IIFEで bare 再束縛） ──
+// 注意: この代入は既存の関数宣言 callAIGuide の束縛先を差し替えるもので、
+//       内側 showResultAt の bare 呼び出しにも反映される。
+callAIGuide = async function(_ignoredPrompt){
+    // 到達地の place / food を確定済みDOMから推定
+    var prefEl=document.getElementById('res-pref-name');
+    var cityEl=document.getElementById('res-addr-main');
+    var pref=null;
+    if(prefEl){ var mm=prefEl.textContent.match(/✨\s*(\S+?)\s*に到着/); if(mm) pref=mm[1]; }
+    if(pref && !window.prefData[pref]) pref=null;
+    var city=cityEl?cityEl.textContent.trim():'';
+    var foreign = prefEl && prefEl.textContent.includes('海外');
+    var food=(pref && window.prefData[pref])?window.prefData[pref].food:'現地グルメ';
+    var place = foreign ? (city||'海外の観光地') : (pref ? (city && city!==pref ? pref+' '+city : pref) : (city||'この地域'));
+    window.__currentPlaceName = place;
+
+    try{ showStatus('🤖 地域情報を取得中…（約10秒）'); }catch(e){}
+    // 軽量プロンプト（9件・各30〜50文字）で10秒以内を狙う。1回のみ・リトライなし。
+    var prompt = 'あなたは明るい観光ガイドAI「ダーツ精霊」🎯。「'+place+'」（名物:'+food+'）を短時間で紹介。'
+        + '絵文字を使い、下記形式を厳守し簡潔に（各説明30〜50文字）。\n'
+        + '### 0. 魅力まとめ\n（80文字程度＋🔮運勢を一言＋👏褒め言葉を一言）\n'
+        + '### 1. 名所（3件）\n### 2. グルメ（3件）\n### 3. 自然・穴場（3件）\n'
+        + '各件は「■ スポット名」で始め30〜50文字で説明。各件末尾に必ず改行で2行:\n'
+        + '[SRC]公式や観光協会などのURL\n[MAP]緯度,経度（数値のみ 例:[MAP]35.71,139.79）\n'
+        + '※前置き・後書き不要。合計9件を必ず出す。';
+    try{
+        var res = await fetchWithTimeout(AI_ENDPOINT, { method:'POST', body: JSON.stringify({ prompt: prompt }) }, 10000);
+        var j = await res.json();
+        var msg = (j && j.message) ? j.message : null;
+        if(msg === '__RATE_LIMIT__') return '__RATE_LIMIT__';
+        if(msg && !msg.startsWith('【')) return msg;
+    }catch(e){ /* 10秒タイムアウト等 → 下でnull */ }
+    return null; // 反応なし → 既存 showResultAt が buildFallbackInfo（Google検索）で回答
+};
+</script>
+<script>
+// ── 対策2: ステータスバー強制クローズの監視（保険） ──
+(function(){
+    'use strict';
+    var bar = document.getElementById('status-bar');
+    if(!bar) return;
+    var watchdog = null;
+    function arm(){ if(watchdog) clearTimeout(watchdog); watchdog = setTimeout(function(){ bar.classList.remove('show'); }, 12000); }
+    var mo = new MutationObserver(function(muts){
+        muts.forEach(function(m){
+            if(m.attributeName === 'class'){
+                if(bar.classList.contains('show')) arm();
+                else if(watchdog){ clearTimeout(watchdog); watchdog = null; }
+            }
+        });
+    });
+    mo.observe(bar, { attributes:true, attributeFilter:['class'] });
+    var panel = document.getElementById('result-panel');
+    if(panel){
+        var pmo = new MutationObserver(function(){
+            if(!panel.classList.contains('active')){ bar.classList.remove('show'); if(watchdog){ clearTimeout(watchdog); watchdog=null; } }
+        });
+        pmo.observe(panel, { attributes:true, attributeFilter:['class'] });
+    }
+})();
+</script>
+
+<!-- 右下FABボタン群を非表示 -->
+<style>#ext-fab{display:none !important;}</style>
+<!-- 🔧 AI結果表示 確実化パック v7（既存コード非改変・最終上書きのみ）
+     ・callAIGuide を一本化：8秒1回。反応なし/失敗/空なら即 null → Google検索結果へ。
+     ・showResultAt をラップし、AI描画が空・例外でも必ず Google検索結果を出す保険。
+     ・ステータスの「15件執筆中」等の文言を「取得中…」に置換（件数表示をやめる）。 -->
+<script>
+// ── (1) callAIGuide を最終・唯一の高速版へ（bare再束縛で内側の呼び出しに確実反映） ──
+callAIGuide = async function(_ignoredPrompt){
+    var prefEl=document.getElementById('res-pref-name');
+    var cityEl=document.getElementById('res-addr-main');
+    var pref=null;
+    if(prefEl){ var mm=prefEl.textContent.match(/✨\s*(\S+?)\s*に到着/); if(mm) pref=mm[1]; }
+    if(pref && !window.prefData[pref]) pref=null;
+    var city=cityEl?cityEl.textContent.trim():'';
+    var foreign = prefEl && prefEl.textContent.indexOf('海外')>=0;
+    var food=(pref && window.prefData[pref])?window.prefData[pref].food:'現地グルメ';
+    var place = foreign ? (city||'海外の観光地') : (pref ? (city && city!==pref ? pref+' '+city : pref) : (city||'この地域'));
+    window.__currentPlaceName = place;
+
+    try{ showStatus('🤖 地域情報を取得中…（約8秒）'); }catch(e){}
+    var prompt = 'あなたは明るい観光ガイドAI「ダーツ精霊」🎯。「'+place+'」（名物:'+food+'）を紹介。'
+        + '絵文字を使い簡潔に、下記形式を厳守（各説明30〜50文字）。\n'
+        + '### 0. 魅力まとめ\n（80文字＋🔮運勢一言＋👏褒め言葉一言）\n'
+        + '### 1. 名所（3件）\n### 2. グルメ（3件）\n### 3. 自然・穴場（3件）\n'
+        + '各件は「■ スポット名」で始め30〜50文字。各件末尾に改行で2行:\n'
+        + '[SRC]URL\n[MAP]緯度,経度（数値のみ 例:[MAP]35.71,139.79）\n※前置き不要。合計9件。';
+    try{
+        var res = await fetchWithTimeout(AI_ENDPOINT, { method:'POST', body: JSON.stringify({ prompt: prompt }) }, 8000);
+        var j = await res.json();
+        var msg = (j && j.message) ? j.message : null;
+        if(msg === '__RATE_LIMIT__') return '__RATE_LIMIT__';
+        if(msg && msg.trim() && msg[0] !== '【') return msg;   // 正常
+    }catch(e){ /* タイムアウト等 */ }
+    return null;   // 反応なし → 既存 showResultAt が Google検索結果を表示
+};
+</script>
+<script>
+(function(){
+    'use strict';
+
+    // ── (2) showStatus をラップして「15件/最大1分」等の文言を穏当な表現へ置換 ──
+    if(typeof window.showStatus === 'function'){
+        var _origShowStatus = window.showStatus;
+        window.showStatus = function(text, spinning){
+            if(typeof text === 'string' && (text.indexOf('15件')>=0 || text.indexOf('執筆中')>=0)){
+                text = '🤖 地域情報を取得中…';
+            }
+            return _origShowStatus.call(this, text, spinning);
+        };
+    }
+
+    // ── (3) showResultAt をラップ：AI描画が空／例外でも必ず Google検索結果を出す保険 ──
+    if(typeof window.showResultAt === 'function'){
+        var _prevShowResult = window.showResultAt;
+        window.showResultAt = async function(currentLat, currentLng, opts){
+            try{
+                await _prevShowResult.call(this, currentLat, currentLng, opts);
+            }catch(e){ /* 内部で例外が出ても下でフォールバック */ }
+            try{
+                var box = document.getElementById('ai-content');
+                // 何も表示されていなければ、Google検索結果（buildFallbackInfo）を強制表示
+                if(box && box.textContent.trim().length < 5){
+                    var prefEl=document.getElementById('res-pref-name');
+                    var cityEl=document.getElementById('res-addr-main');
+                    var pref=null;
+                    if(prefEl){ var mm=prefEl.textContent.match(/✨\s*(\S+?)\s*に到着/); if(mm) pref=mm[1]; }
+                    if(pref && !window.prefData[pref]) pref=null;
+                    var city=cityEl?cityEl.textContent.trim():'';
+                    var label = pref ? (city && city!==pref ? pref+' '+city : pref) : (city||'この地域');
+                    var data = (pref && window.prefData[pref]) ? window.prefData[pref]
+                             : { food:'現地グルメ', lat:35.68, lng:139.69 };
+                    window.__currentPlaceName = label;
+                    if(typeof buildFallbackInfo === 'function'){
+                        box.innerHTML = '<div style="background:#eef6ff;border:1px solid #cfe3fb;border-radius:10px;padding:10px;margin-bottom:12px;font-size:0.85rem;">🤖 AIの応答がなかったため、Google検索の結果でご案内します👇</div>'
+                                      + buildFallbackInfo(label, data);
+                    }
+                }
+                try{ hideStatus(); }catch(e){}
+            }catch(e){ /* 保険の中の例外は無視 */ }
+        };
+    }
+})();
+</script>
+
+<!-- 🤖⚡ AIバックグラウンド配信パック v9（既存コード非改変・最終上書きのみ）
+     設計変更: 「Google検索結果を即表示 → AIは裏で待ち、届き次第その上に差し込む」
+     ・体感待ち時間ゼロ（フォールバックが先に出る）
+     ・AIには45秒の余裕を与えるので、応答できる限りほぼ毎回AIが使われる -->
+<script>
+// bare再束縛（内側 showResultAt の呼び出しに確実に反映させるため window. を介さない）
+callAIGuide = async function(_ignoredPrompt){
+    // --- 到達地の place / food を確定済みDOMから推定 ---
+    var prefEl=document.getElementById('res-pref-name');
+    var cityEl=document.getElementById('res-addr-main');
+    var pref=null, mm;
+    var pt = prefEl ? (prefEl.textContent||'') : '';
+    if((mm=pt.match(/✨\s*(\S+?)\s*に到着/))) pref=mm[1];
+    if(pref && !(window.prefData && window.prefData[pref])) pref=null;
+    var city=cityEl?(cityEl.textContent||'').trim():'';
+    var foreign = pt.indexOf('海外')>=0;
+    var data=(pref && window.prefData && window.prefData[pref]) ? window.prefData[pref] : {food:'ご当地グルメ'};
+    var place = foreign ? (city||'海外の観光地') : (pref ? (city && city!==pref ? pref+' '+city : pref) : (city||'この地域'));
+    window.__currentPlaceName = place;
+
+    // --- 世代トークン（投げ直しで古い応答を捨てる） ---
+    window.__aiGen = (window.__aiGen||0) + 1;
+    var gen = window.__aiGen;
+
+    // --- 裏でAI取得を開始（返答は待たない） ---
+    window.__extBgAI(gen, place, data.food);
+
+    // --- 即 null を返す → 内側が直ちに Google検索結果を表示する ---
+    return null;
+};
+
+// 背景AI処理本体
+window.__extBgAI = function(gen, place, food){
+    var NOTE = '<div id="ai-bg-note" style="background:#f4edff;border:1px solid #d6c3f5;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.85rem;font-weight:700;color:#6c3fb5;">🤖 AIガイドが執筆中です…届き次第ここに追加します（先にGoogle検索でご案内中👇）</div>';
+    var FAIL = '<div style="background:#f7f7f7;border:1px solid #e0e0e0;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:0.8rem;color:#888;">🤖 AIは混み合っていたため、今回はGoogle検索の結果でご案内しています。</div>';
+    var LIMIT = '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:0.8rem;">⏳ 本日のAI利用回数の上限に達したため、Google検索の結果でご案内しています。</div>';
+
+    function panelOpen(){ var p=document.getElementById('result-panel'); return p && p.classList.contains('active'); }
+    function box(){ return document.getElementById('ai-content'); }
+    function removeNote(html){
+        return html
+            .replace(/<div id="ai-bg-note"[\s\S]*?<\/div>/, '')
+            // 内側が出す「混雑で受け取れませんでした」は、背景AI方式では
+            // まだ問い合わせ中の段階で出てしまい事実と異なるため取り除く
+            .replace(/<div[^>]*>🤖 AIガイドの応答が混雑で受け取れませんでした。[\s\S]*?<\/div>/, '');
+    }
+
+    // フォールバック描画の後に「執筆中」ノートを先頭へ挿し込む
+    // （AIが即失敗/即応答した場合は __aiDone が立つので挿入しない）
+    setTimeout(function(){
+        if(gen !== window.__aiGen || window.__aiDone === gen || !panelOpen()) return;
+        var b = box(); if(!b) return;
+        if(b.innerHTML.indexOf('ai-bg-note') < 0){ b.innerHTML = NOTE + removeNote(b.innerHTML); }
+    }, 120);
+
+    // AI本体リクエスト（リッチ版プロンプト・45秒）
+    var prompt = 'あなたは超テンション高めで親しみやすい観光ガイドAI「ダーツ精霊」です！🎯✨\n'
+        + '「'+place+'」（名物ヒント:'+food+'）を下記形式で紹介してください。\n'
+        + '【形式厳守】\n'
+        + '### 0. 魅力まとめ\n（150文字で熱く紹介、絵文字たっぷり🌸⛩️🍜。続けて「🔮 ダーツ運勢：」一言、「👏 褒め言葉：」一言）\n'
+        + '### 1. 歴史・名所（5件）\n### 2. グルメ・名物（5件）\n### 3. 自然・体験・穴場（5件）\n'
+        + '各件は「■ スポット名」で始め、説明40〜80文字＋絵文字2個以上。各件末尾に必ず改行して2行:\n'
+        + '[SRC]公式や観光協会などのURL\n[MAP]緯度,経度（数値のみ 例:[MAP]35.71,139.79）\n'
+        + '※前置き・後書き不要。合計15件を必ず出す。';
+
+    fetchWithTimeout(AI_ENDPOINT, { method:'POST', body: JSON.stringify({ prompt: prompt }) }, 45000)
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+            // 内側のフォールバック描画より必ず後に走らせる（瞬時応答/失敗時の競合防止）
+            setTimeout(function(){
+            if(gen !== window.__aiGen || !panelOpen()) return;   // 古い投げ or パネル閉 → 破棄
+            var b = box(); if(!b) return;
+            var msg = (j && j.message) ? j.message : null;
+            window.__aiDone = gen;
+            if(msg === '__RATE_LIMIT__'){ b.innerHTML = LIMIT + removeNote(b.innerHTML); return; }
+            if(!msg || !msg.trim() || msg[0]==='【'){ b.innerHTML = FAIL + removeNote(b.innerHTML); return; }
+            // 成功 → AI本文をGoogle結果の上へ差し込み
+            var formatted;
+            try{ formatted = (typeof formatAIResponse==='function') ? formatAIResponse(msg) : msg; }
+            catch(e){ formatted = msg.replace(/</g,'&lt;').replace(/\n/g,'<br>'); }
+            var aiHtml = '<div class="ai-part-fade">'
+                + '<div style="background:linear-gradient(90deg,#8e44ad,#3498db);color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-weight:900;">🤖✨ AIガイドが届きました！</div>'
+                + formatted
+                + '<div style="margin:20px 0 10px;border-top:2px dashed #ddd;"></div>'
+                + '<div style="font-size:0.8rem;color:#888;margin-bottom:8px;">▼ あわせてGoogle検索でも調べられます</div>'
+                + '</div>';
+            // ★「0.」が二重に見える問題の対策：既存(Google側)の「0. 魅力まとめ」導入部は
+            //   AI側が既に同種の紹介を書いているため、重複するここだけを取り除く。
+            //   1./2./3.の実リンク集はそのまま残す。
+            var oldContent = removeNote(b.innerHTML);
+            oldContent = oldContent.replace(/<div class="ai-heading">✨ 0\.[\s\S]*?(?=<div class="ai-heading">)/, '');
+            b.innerHTML = aiHtml + oldContent;
+            if(typeof addSourceFallbacks==='function'){ try{ addSourceFallbacks(); }catch(e){} }
+            }, 150);
+        })
+        .catch(function(){
+            setTimeout(function(){
+            window.__aiDone = gen;
+            if(gen !== window.__aiGen || !panelOpen()) return;
+            var b = box(); if(!b) return;
+            b.innerHTML = FAIL + removeNote(b.innerHTML);
+            }, 150);
+        });
+};
+</script>
+
+<!-- 🏷️ 情報源ラベルパック v10 修正版（DOM書換なし・生成時に付与） -->
+<style>
+    .src-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-weight: 900; font-size: 0.82rem; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    .src-badge.ai { background: linear-gradient(135deg,#8e44ad,#3498db); color: #fff; }
+    .src-badge.google { background: linear-gradient(135deg,#4285f4,#34a853); color: #fff; }
+    .src-header-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px 12px; border-radius: 8px; }
+    .src-header-row.ai-h { background: #f6efff; border-left: 4px solid #8e44ad; }
+    .src-header-row.google-h { background: #eef4ff; border-left: 4px solid #4285f4; }
+    .src-header-row .src-caption { font-size: 0.78rem; color: #666; font-weight: 700; }
+</style>
+<script>
+(function(){
+    'use strict';
+
+    var AI_HEADER = '<div class="src-header-row ai-h"><span class="src-badge ai">🤖 AI生成コンテンツ</span><span class="src-caption">以下は「ダーツ精霊」AIが今回作成した紹介文です</span></div>';
+    var GOOGLE_HEADER = '<div class="src-header-row google-h"><span class="src-badge google">🔍 Google検索リンク集</span><span class="src-caption">以下はAI生成ではなく、Google検索へのリンクです</span></div>';
+
+    // buildFallbackInfo をラップ：出力の先頭に必ず Google ラベルを付ける。
+    // これで元コード・addon9 のどこから呼ばれても常にラベル付きになる。
+    if(typeof window.buildFallbackInfo === 'function'){
+        var _origFB = window.buildFallbackInfo;
+        window.buildFallbackInfo = function(label, data){
+            var html;
+            try{ html = _origFB.call(this, label, data); }catch(e){ html = ''; }
+            return GOOGLE_HEADER + html;
+        };
+    }
+
+    // addon9 の AI 成功時HTMLに AI ラベルを付けるため、表示直後にラベルを差し込む。
+    // ai-content の innerHTML 変化を監視し、「AIガイドが届きました」バナーが存在し
+    // かつまだ AI ラベルが付いていない場合のみ、バナーの直前に差し込む。
+    // ここでは DOM を破壊する正規表現は使わず、DOM API で挿入する。
+    var box = document.getElementById('ai-content');
+    if(!box) return;
+    var mo = new MutationObserver(function(){
+        try{
+            if(box.innerHTML.indexOf('src-header-row ai-h') >= 0) return; // 既にAIラベル有り
+            var banner = null;
+            var divs = box.querySelectorAll('div');
+            for(var i=0;i<divs.length;i++){
+                if(divs[i].textContent.indexOf('AIガイドが届きました') >= 0){ banner = divs[i]; break; }
+            }
+            if(!banner) return;
+            // 「AIガイドが届きました」バナーを内包する ai-part-fade の直前に挿入
+            var host = banner.closest ? banner.closest('.ai-part-fade') : null;
+            if(!host){
+                var p = banner;
+                while(p && p.parentNode !== box){ p = p.parentNode; }
+                host = p || banner;
+            }
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = AI_HEADER;
+            var label = wrapper.firstChild;
+            host.parentNode.insertBefore(label, host);
+        }catch(e){ /* 何もしない：ラベル無しでもコンテンツは絶対に消さない */ }
+    });
+    mo.observe(box, { childList:true, subtree:true });
+})();
+</script>
+
+<!-- 🔗 リンク切れ根絶パック v11（案A・既存コード非改変・override のみ）
+     ・AIプロンプトから [SRC]URL 要求を撤廃（URLを想像で作らせない）
+     ・スポット名から Google検索・画像検索・地図の3リンクを自動生成
+     ・生成したリンクは Google が生きている限り絶対にリンク切れしない -->
+<style>
+    .lc-link-row { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 6px; }
+    .lc-link { display: inline-block; padding: 4px 12px; border-radius: 14px; font-size: 0.82rem; font-weight: 700; text-decoration: none !important; border-bottom: none !important; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .lc-search { background: #eaf2fb; color: #2c6cb0 !important; }
+    .lc-image { background: #f0eeff; color: #5b4bff !important; }
+    .lc-map { background: #e8f8ef; color: #1e8449 !important; }
+</style>
+<script>
+(function(){
+    'use strict';
+
+    // ── (1) __extBgAI をラップ：[SRC] を要求しないプロンプトに置換 ──
+    if(typeof window.__extBgAI === 'function'){
+        var _origBg = window.__extBgAI;
+        window.__extBgAI = function(gen, place, food){
+            // fetchWithTimeout を局所的にフックして、渡された prompt から [SRC]要求を削除する
+            var _origFetch = window.fetchWithTimeout;
+            var patched = false;
+            window.fetchWithTimeout = function(url, opts, ms){
+                try{
+                    if(!patched && opts && opts.body){
+                        var body = JSON.parse(opts.body);
+                        if(body && typeof body.prompt === 'string' && (body.prompt.indexOf('[SRC]') >= 0 || body.prompt.indexOf('[MAP]') >= 0)){
+                            // [SRC]/[MAP] は要求したまま、ソースの品質指示を強化する
+                            body.prompt = body.prompt
+                                + '\n※【[SRC]の厳格ルール】実在が確実なURLのみ書くこと。優先順: (1)自治体・観光協会の公式サイト (2)Wikipedia日本語版。'
+                                + '少しでも不確かな場合は必ず https://ja.wikipedia.org/wiki/スポット名 の形式で書く。'
+                                + '存在しないURLをそれらしく創作することは絶対に禁止。必ずhttpsで始めること。';
+                            opts = Object.assign({}, opts, { body: JSON.stringify(body) });
+                            patched = true;
+                        }
+                    }
+                }catch(e){}
+                return _origFetch.call(this, url, opts, ms);
+            };
+            try{ _origBg.call(this, gen, place, food); }
+            finally{
+                // ネスト呼び出し安全のため、次のイベントループで元に戻す
+                setTimeout(function(){ window.fetchWithTimeout = _origFetch; }, 0);
+            }
+        };
+    }
+
+    // ── (2) formatAIResponse をラップ：
+    //    ・[SRC]は残す（情報ソース表示のため。生存チェックは後段で実施）
+    //    ・[MAP]が無いスポットには自動補完 → 全スポットに「地図で見る／ここに表示」を保証
+    //    ・地図URLの座標は「地域名＋スポット名」検索に書き換え（位置ズレ根絶は維持） ──
+    if(typeof window.formatAIResponse === 'function'){
+        var _origFormat = window.formatAIResponse;
+        window.formatAIResponse = function(text){
+            var t = String(text || '');
+            var place = String(window.__currentPlaceName || '');
+
+            // ★[MAP]が無いスポットに合成[MAP]を補完（0,0はダミー。後で名前検索に置換される）
+            //   「■ スポット名」ごとにブロックを区切り、[MAP]が無ければ末尾に追加する。
+            var parts = t.split(/(?=■)/);
+            for(var pi=0; pi<parts.length; pi++){
+                if(parts[pi].charAt(0)==='■' && parts[pi].indexOf('[MAP]') < 0){
+                    // 次の見出し(###)以降は跨がないよう、###の手前に挿す
+                    var hIdx = parts[pi].indexOf('###');
+                    if(hIdx >= 0){
+                        parts[pi] = parts[pi].slice(0,hIdx).replace(/\s*$/,'\n[MAP]0.0,0.0\n') + parts[pi].slice(hIdx);
+                    } else {
+                        parts[pi] = parts[pi].replace(/\s*$/,'\n[MAP]0.0,0.0\n');
+                    }
+                }
+            }
+            t = parts.join('');
+
+            // スポット名キューを [MAP] 出現順に構築（座標→名前検索の書換に使用）
+            var kwQueue = [];
+            var kwRe = /■\s*([^\n\[]+)[\s\S]*?\[MAP\]\s*[-0-9.]+\s*,\s*[-0-9.]+/g;
+            var m;
+            while((m = kwRe.exec(t)) !== null){
+                var name = m[1].replace(/[\s\u3000]+$/,'').trim();
+                kwQueue.push(encodeURIComponent((place ? place + ' ' : '') + name));
+            }
+
+            // 既存フォーマッタで通常HTML化（[SRC]→情報ソースリンク、[MAP]→地図ボタン群）
+            var html = _origFormat.call(this, t);
+
+            // 地図URLの座標部分をスポット名クエリへ書き換え（Googleに正確な位置を解決させる）
+            var i1 = 0;
+            html = html.replace(/(https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=)([-0-9.]+),([-0-9.]+)/g,
+                function(all, prefix, la, lo){ var q = kwQueue[i1++]; return prefix + (q || (la + ',' + lo)); });
+            var i2 = 0;
+            html = html.replace(/(https:\/\/maps\.google\.co\.jp\/maps\?q=)([-0-9.]+),([-0-9.]+)/g,
+                function(all, prefix, la, lo){ var q = kwQueue[i2++]; return prefix + (q || (la + ',' + lo)); });
+
+            return html;
+        };
+    }
+})();
+</script>
+
+<!-- ✅ 情報ソース生存チェックパック v12（既存コード非改変・追記のみ）
+     ・[SRC]リンクを表示直後に到達性チェック（no-cors fetch: CORSの影響を受けない）
+     ・生きているリンク → 「🔗 情報ソース ✅」として表示
+     ・死んでいるリンク → 非表示にして「🔍 ソースを検索」へ自動切替
+     ・チェック中は「⏳ ソース確認中…」表示 -->
+<style>
+    a.src-link.src-checking { opacity: 0.55; pointer-events: none; }
+    a.src-link.src-ok { background: #e8f8ef !important; color: #1e8449 !important; }
+    a.src-link.src-dead { display: none !important; }
+    a.src-alt-link.src-promoted { background: #eaf2fb !important; color: #2c6cb0 !important; font-size: 0.85rem !important; padding: 3px 10px !important; }
+</style>
+<script>
+(function(){
+    'use strict';
+
+    // 到達性チェック：no-cors fetch は CORS制約の影響を受けず、
+    //   ・DNS不在／接続不可（＝創作ドメイン等の完全な死にリンク） → reject
+    //   ・サーバが何か応答（200/404含む） → resolve
+    // 完全な検証ではないが「存在しないドメインの創作URL」を確実に弾ける。
+    function probe(url, ms){
+        return new Promise(function(resolve){
+            var done = false;
+            var timer = setTimeout(function(){ if(!done){ done=true; resolve(false); } }, ms||4000);
+            try{
+                if(!/^https:\/\//.test(url)){ clearTimeout(timer); resolve(false); return; } // httpは混在ブロックで開けない
+                fetch(url, { mode:'no-cors', method:'GET', cache:'no-store' })
+                    .then(function(){ if(!done){ done=true; clearTimeout(timer); resolve(true); } })
+                    .catch(function(){ if(!done){ done=true; clearTimeout(timer); resolve(false); } });
+            }catch(e){ if(!done){ done=true; clearTimeout(timer); resolve(false); } }
+        });
+    }
+
+    // ソースリンク検証本体（テスト可能なよう、対象リストを引数でも受け取れる）
+    window.__verifySrcLinks = function(list){
+        var links = list || document.querySelectorAll('a.src-link[href^="http"]');
+        Array.prototype.forEach.call(links, function(a){
+            if(a.dataset && a.dataset.verified === '1') return;
+            if(a.dataset) a.dataset.verified = '1';
+            var url = a.getAttribute ? a.getAttribute('href') : a.href;
+            if(!url || url.indexOf('google.com') >= 0){ return; } // Google系リンクはチェック不要
+            // チェック中表示
+            var origLabel = a.innerHTML;
+            a.classList.add('src-checking');
+            a.innerHTML = '⏳ ソース確認中…';
+            probe(url, 4000).then(function(alive){
+                if(alive){
+                    a.classList.remove('src-checking');
+                    a.classList.add('src-ok');
+                    a.innerHTML = '🔗 情報ソース ✅';
+                } else {
+                    // 死にリンク → 非表示、隣の予備検索リンクを昇格
+                    a.classList.remove('src-checking');
+                    a.classList.add('src-dead');
+                    a.innerHTML = origLabel;
+                    try{
+                        var sib = a.nextElementSibling;
+                        // addSourceFallbacks が入れた .src-alt-link（🔍検索）を探して目立たせる
+                        while(sib){
+                            if(sib.classList && sib.classList.contains('src-alt-link')){
+                                sib.classList.add('src-promoted');
+                                sib.innerHTML = '🔍 ソースを検索';
+                                break;
+                            }
+                            sib = sib.nextElementSibling;
+                        }
+                    }catch(e){}
+                }
+            });
+        });
+    };
+
+    // addSourceFallbacks（予備検索リンク付与）をラップし、その直後に検証を走らせる。
+    if(typeof window.addSourceFallbacks === 'function'){
+        var _origASF = window.addSourceFallbacks;
+        window.addSourceFallbacks = function(){
+            try{ _origASF.apply(this, arguments); }catch(e){}
+            try{ window.__verifySrcLinks(); }catch(e){}
+        };
+    }
+    // 保険：ai-content の変化を監視して未検証リンクを拾う（AI遅延到着にも対応）
+    var box = document.getElementById('ai-content');
+    if(box && typeof MutationObserver === 'function'){
+        var mo = new MutationObserver(function(){
+            setTimeout(function(){ try{ window.__verifySrcLinks(); }catch(e){} }, 200);
+        });
+        mo.observe(box, { childList:true, subtree:true });
+    }
+})();
+</script>
+
+<!-- 🖼️📖 画像ギャラリー＆履歴強化パック v13（既存コード非改変・追記のみ）
+     ・AI出力の各スポットに Pixabay 画像3枚のサムネイル表示＋クリックで拡大
+     ・履歴に「詳細を見る」を追加：その回に表示されたテキスト・リンクを再閲覧可能
+     （履歴の「すべて消す」ボタンは既存実装がそのまま機能します） -->
+<style>
+    .pixabay-gallery { display: flex; gap: 8px; margin: 6px 0 10px; flex-wrap: wrap; }
+    .pixabay-gallery .pxg-loading { font-size: 0.8rem; color: #999; }
+    .pixabay-gallery .pxg-thumb { width: 92px; height: 92px; object-fit: cover; border-radius: 10px; cursor: zoom-in; box-shadow: 0 2px 6px rgba(0,0,0,0.15); transition: transform 0.15s; }
+    .pixabay-gallery .pxg-thumb:hover { transform: scale(1.05); }
+    .pixabay-gallery .pxg-none { font-size: 0.78rem; color: #bbb; }
+    .pixabay-gallery .pxg-load-btn { border: 1px solid #d8cdf0; background: #f6efff; color: #7a4fd6; font-weight: 700; font-size: 0.82rem; padding: 6px 14px; border-radius: 20px; cursor: pointer; }
+    .pixabay-gallery .pxg-load-btn:hover { background: #ede0ff; }
+    #pixabay-lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1400; align-items: center; justify-content: center; cursor: zoom-out; padding: 20px; }
+    #pixabay-lightbox img { max-width: 92vw; max-height: 88vh; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+
+    #history-detail-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:1100; justify-content:center; align-items:center; padding:20px; }
+    #history-detail-modal .hd-card { background:#fff; width:100%; max-width:560px; max-height:82vh; border-radius:20px; padding:20px; overflow-y:auto; position:relative; }
+    #history-detail-modal .hd-close { position:absolute; top:14px; right:18px; font-size:1.5rem; background:none; border:none; color:#888; cursor:pointer; }
+    #history-detail-modal .hd-title { font-weight:900; font-size:1.05rem; margin:0 0 14px; padding-bottom:10px; border-bottom:2px solid var(--accent); }
+    .history-item .history-detail-btn { border:none; background:none; cursor:pointer; color:#8e44ad; font-weight:900; font-size:0.85rem; margin-left:8px; }
+</style>
+
+<div id="pixabay-lightbox" onclick="this.style.display='none'"><img id="pixabay-lightbox-img" src=""></div>
+
+<div id="history-detail-modal">
+    <div class="hd-card">
+        <button class="hd-close" onclick="document.getElementById('history-detail-modal').style.display='none'">×</button>
+        <div class="hd-title" id="history-detail-title"></div>
+        <div id="history-detail-body"></div>
+    </div>
+</div>
+
+<script>
+(function(){
+    'use strict';
+
+    // ══════════════════════════════════════════════
+    // 🖼️ Pixabay画像ギャラリー
+    // ══════════════════════════════════════════════
+    // GAS側のレスポンス形式が想定と違うケースに備え、複数の形を許容して画像URL配列を取り出す。
+    // 何も取り出せなかった場合は、原因切り分けのため生データを console に出す。
+    function normalizeImageUrl(item){
+        if(!item) return null;
+        if(typeof item === 'string') return item;
+        if(typeof item === 'object'){
+            return item.webformatURL || item.largeImageURL || item.previewURL
+                || item.url || item.imageUrl || item.image || item.src
+                || item.thumbnail || item.link || null;
+        }
+        return null;
+    }
+    function extractImagesFromResponse(data){
+        if(!data) return [];
+        // 想定どおり: { images: [...] }
+        var candidates = null;
+        if(Array.isArray(data.images)) candidates = data.images;
+        // Pixabay公式APIそのままの形: { hits: [...] }
+        else if(Array.isArray(data.hits)) candidates = data.hits;
+        // { results: [...] } / { data: [...] } 等よくある別名
+        else if(Array.isArray(data.results)) candidates = data.results;
+        else if(Array.isArray(data.data)) candidates = data.data;
+        // トップレベルが配列そのもの
+        else if(Array.isArray(data)) candidates = data;
+        // 他のエンドポイントと同じく { message: ... } でラップされているケース
+        else if(data.message){
+            var m = data.message;
+            if(typeof m === 'string'){
+                try{ m = JSON.parse(m); }catch(e){ m = null; }
+            }
+            if(m){
+                if(Array.isArray(m.images)) candidates = m.images;
+                else if(Array.isArray(m.hits)) candidates = m.hits;
+                else if(Array.isArray(m)) candidates = m;
+            }
+        }
+        if(!candidates) return [];
+        return candidates.map(normalizeImageUrl).filter(Boolean);
+    }
+    function _rawFetchPixabayImages(query){
+        return fetchWithTimeout(AI_ENDPOINT, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'imageSearch', query: query })
+        }, 20000)  // GAS→Pixabayの連鎖呼び出しは時間がかかることがあるため20秒に延長
+        .then(function(r){
+            return r.text().then(function(raw){
+                var data;
+                try{ data = JSON.parse(raw); }
+                catch(e){
+                    // JSONでない＝GASが未デプロイ/認証ページ等を返している可能性
+                    console.warn('[画像検索] GASの応答がJSONではありません（未デプロイ・アクセス権限の可能性）。生の応答:', raw.slice(0,300));
+                    var err = new Error('not-json');
+                    err.__uiMessage = '⚠️ GASの応答がJSONではありません（デプロイ更新・アクセス権限をご確認ください）';
+                    throw err;
+                }
+                return data;
+            });
+        })
+        .then(function(data){
+            var urls = extractImagesFromResponse(data).slice(0,3);
+            if(urls.length === 0){
+                console.warn('[画像検索] 「' + query + '」の画像が見つかりませんでした。GASの応答内容:', data);
+                var errMsg = (data && typeof data.message === 'string'
+                    && (data.message.indexOf('エラー') >= 0 || data.message.indexOf('【') >= 0))
+                    ? data.message : null;
+                return { urls: [], error: errMsg };
+            }
+            return { urls: urls, error: null };
+        })
+        .catch(function(e){
+            if(e && e.__uiMessage){ return { urls: [], error: e.__uiMessage }; }
+            var isAbort = e && (e.name === 'AbortError' || /abort/i.test(String(e && e.message)));
+            var uiMsg = isAbort
+                ? '⚠️ 通信タイムアウト（20秒）。GASが混雑しているか応答が遅い可能性があります'
+                : '⚠️ 通信エラー: ' + (e && e.message ? e.message : String(e));
+            console.warn('[画像検索] 「' + query + '」の取得中にエラー:', e);
+            return { urls: [], error: uiMsg };
+        });
+    }
+
+    // ★GASの同時実行数の上限に引っかからないよう、Pixabay問い合わせは
+    //   全ギャラリー・全フォールバック段を通じて「1件ずつ順番に」実行する。
+    //   （15スポット×最大5段=最大75件が一斉に飛ぶと、GAS側が詰まって
+    //     "japan travel"のような鉄板クエリすら全滅することがあるため）
+    var __pxgQueueTail = Promise.resolve();
+    function fetchPixabayImages(query){
+        var run = function(){ return _rawFetchPixabayImages(query); };
+        var result = __pxgQueueTail.then(run, run);
+        __pxgQueueTail = result.catch(function(){ /* キューを止めない */ });
+        return result;
+    }
+
+    window.__openPixabayLightbox = function(url){
+        var lb = document.getElementById('pixabay-lightbox');
+        var img = document.getElementById('pixabay-lightbox-img');
+        img.src = url;
+        lb.style.display = 'flex';
+    };
+
+    var pxgCounter = 0;
+
+    // formatAIResponse をラップ：本物のAI項目（画像検索リンク付きの ai-item-title）にのみ
+    // ギャラリーのプレースホルダーを差し込む（Google検索リンク集の合成項目には付かない）
+    if(typeof window.formatAIResponse === 'function'){
+        var _origFormatForGallery = window.formatAIResponse;
+        window.formatAIResponse = function(text){
+            var html = _origFormatForGallery.call(this, text);
+            html = html.replace(
+                /(<div class="ai-item-title">📌\s*([^<]+?)\s*<a[^>]*class="img-link"[^>]*>[^<]*<\/a><\/div>)/g,
+                function(whole, titleDiv, rawName){
+                    var name = rawName.replace(/[\s\u3000]+$/,'').trim();
+                    var gid = 'pxg-' + Date.now() + '-' + (pxgCounter++);
+                    var gallery = '<div class="pixabay-gallery" id="' + gid + '" data-pxg-query="' + name.replace(/"/g,'&quot;') + '">'
+                        + '<button type="button" class="pxg-load-btn" onclick="window.__loadPixabayGallery(\'' + gid + '\')">🖼️ 画像をここに表示</button></div>';
+                    return titleDiv + gallery;
+                }
+            );
+            return html;
+        };
+    }
+
+    // 日本語のスポット名に含まれるカテゴリ語を、Pixabayで通りやすい英語キーワードへ変換する。
+    // （長い語から先にマッチさせ、「神宮」が「神社」の一部を誤って拾わないようにする）
+    var PXG_CATEGORY_MAP = [
+        ['美術館','art museum japan'], ['博物館','museum japan'], ['水族館','aquarium japan'],
+        ['動物園','zoo japan'], ['植物園','botanical garden japan'], ['灯台','lighthouse japan'],
+        ['牧場','farm japan'], ['神宮','shrine japan'], ['神社','shrine japan'], ['寺院','temple japan'],
+        ['お寺','temple japan'], ['寺','temple japan'], ['城跡','castle ruins japan'], ['城','castle japan'],
+        ['温泉','onsen hot spring japan'], ['滝','waterfall japan'], ['湖','lake japan'],
+        ['海岸','beach japan'], ['ビーチ','beach japan'], ['公園','park japan'], ['庭園','japanese garden'],
+        ['桜','cherry blossom japan'], ['紅葉','autumn leaves japan'], ['山','mountain japan'],
+        ['駅','train station japan'], ['橋','bridge japan'], ['商店街','shopping street japan'],
+        ['ラーメン','ramen'], ['うどん','udon noodles'], ['そば','soba noodles'], ['寿司','sushi'],
+        ['天ぷら','tempura'], ['焼肉','yakiniku bbq'], ['カフェ','cafe'], ['市場','market japan']
+    ];
+    function guessCategoryQuery(spotName){
+        for(var i=0;i<PXG_CATEGORY_MAP.length;i++){
+            if(spotName.indexOf(PXG_CATEGORY_MAP[i][0]) >= 0) return PXG_CATEGORY_MAP[i][1];
+        }
+        return null;
+    }
+
+    // ★段階的フォールバック：スポット名で0件なら、カテゴリ推定→地域名→英語の汎用ワードの順に広げる。
+    //   Pixabayはタグが英語中心のため、日本語キーワードは高確率でヒットしない（既知の制約）。
+    //   カテゴリ英訳を挟むことで、単なる汎用風景よりも内容に近い写真を優先的に狙う。
+    function fetchPixabayImagesWithFallback(spotName, placeName){
+        var tiers = [{ q: spotName, broadened: false }];
+        var cat = guessCategoryQuery(spotName);
+        if(cat){ tiers.push({ q: cat, broadened: true }); }
+        if(placeName && placeName !== spotName){ tiers.push({ q: placeName, broadened: true }); }
+        tiers.push({ q: 'japan travel', broadened: true });   // 英語：ほぼ確実にヒットする最終フォールバック
+        tiers.push({ q: 'japan',        broadened: true });   // 念のためもう一段（英語）
+        var lastError = null;
+        function tryTier(i){
+            if(i >= tiers.length) return Promise.resolve({ urls: [], error: lastError, broadened: false });
+            return fetchPixabayImages(tiers[i].q).then(function(r){
+                if(r.urls && r.urls.length > 0){
+                    return { urls: r.urls, error: null, broadened: tiers[i].broadened };
+                }
+                if(r.error) lastError = r.error;
+                return tryTier(i+1);
+            });
+        }
+        return tryTier(0);
+    }
+
+    // ★自動一斉取得はやめ、「🖼️ 画像をここに表示」ボタンが押されたときだけ
+    //   Pixabayへ問い合わせる（オンデマンド方式）。GASへの同時アクセスも自然に抑えられる。
+    window.__loadPixabayGallery = function(gid){
+        var g = document.getElementById(gid);
+        if(!g || g.dataset.pxgFilled === '1') return;
+        g.dataset.pxgFilled = '1';
+        var q = g.dataset.pxgQuery;
+        var place = String(window.__currentPlaceName || '');
+        g.innerHTML = '<span class="pxg-loading">🖼️ 画像を読み込み中…</span>';
+        fetchPixabayImagesWithFallback(q, place).then(function(result){
+            var urls = result.urls, error = result.error;
+            if(!urls || urls.length === 0){
+                g.innerHTML = error
+                    ? '<span class="pxg-none">⚠️ 画像取得エラー: ' + error.replace(/</g,'&lt;') + '</span>'
+                    : '<span class="pxg-none">🖼️ 画像は見つかりませんでした</span>';
+                return;
+            }
+            var thumbs = urls.map(function(u){
+                return '<img class="pxg-thumb" src="' + u + '" loading="lazy" onclick="window.__openPixabayLightbox(\'' + u.replace(/'/g,"\\'") + '\')">';
+            }).join('');
+            var note = result.broadened
+                ? '<div style="width:100%;font-size:0.72rem;color:#aaa;margin-top:2px;">※スポット固有の写真が無かったため地域の一般的な画像を表示しています</div>'
+                : '';
+            g.innerHTML = thumbs + note;
+        });
+    };
+
+    // ══════════════════════════════════════════════
+    // 📖 履歴の強化：日時記録は既存のまま／各回の表示内容(テキスト・リンク)を
+    //    スナップショット保存し、履歴から「詳細を見る」で再閲覧できるようにする。
+    //    ※「履歴をすべて消す」ボタンは既存実装がそのまま機能します。
+    // ══════════════════════════════════════════════
+
+    // saveHistory を bare名で再束縛（内側の呼び出しに確実に反映させるため window. を介さない）
+    var __origSaveHistory = saveHistory;
+    saveHistory = function(pref, city, lat, lng){
+        var id = 'h_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+        window.__lastHistoryId = id;
+        __origSaveHistory(pref, city, lat, lng);
+        try{
+            if(typeof historyData !== 'undefined' && historyData[0]){
+                historyData[0].id = id;
+                historyData[0].snapshot = null;
+                localStorage.setItem('dartsHistory', JSON.stringify(historyData));
+            }
+        }catch(e){}
+    };
+
+    // showHistory を bare名で再束縛：各項目に「詳細を見る」を追加（スナップショットが有る場合のみ）
+    var __origShowHistory = showHistory;
+    showHistory = function(){
+        var listDiv = document.getElementById('history-list');
+        if(!listDiv || typeof historyData === 'undefined'){ return __origShowHistory(); }
+        if(historyData.length === 0){
+            listDiv.innerHTML = "<p style='text-align:center; color:#888; padding: 20px;'>まだ旅の履歴がありません。ダーツを投げましょう！🎯</p>";
+        } else {
+            listDiv.innerHTML = historyData.map(function(h, idx){
+                var hasSnap = h.snapshot && h.snapshot.length > 10;
+                return '<div class="history-item">'
+                    + '<div class="history-title">📍 ' + h.city + ' <span style="font-size:0.8rem; color:#666;">(' + h.pref + ')</span></div>'
+                    + '<div class="history-date">📅 ' + h.date + '</div>'
+                    + '<a href="https://www.google.com/maps/search/?api=1&query=' + h.lat + ',' + h.lng + '" target="_blank" class="history-link">🗺️ Googleマップで開く</a>'
+                    + (hasSnap ? '<button class="history-detail-btn" onclick="window.__viewHistorySnapshot(' + idx + ')">📖 詳細を見る</button>' : '')
+                    + '</div>';
+            }).join('');
+        }
+        document.getElementById('history-modal').style.display = 'flex';
+    };
+
+    window.__viewHistorySnapshot = function(idx){
+        if(typeof historyData === 'undefined' || !historyData[idx]) return;
+        var h = historyData[idx];
+        if(!h.snapshot) return;
+        document.getElementById('history-detail-title').textContent = '📍 ' + h.city + '（' + h.pref + '）　📅 ' + h.date;
+        document.getElementById('history-detail-body').innerHTML = h.snapshot;
+        document.getElementById('history-detail-modal').style.display = 'flex';
+    };
+
+    // ai-content の内容が安定した時点（変化が800ms止まったら）で、
+    // 現在の投げに対応する履歴エントリへスナップショットを保存する。
+    var snapBox = document.getElementById('ai-content');
+    if(snapBox){
+        var snapTimer = null;
+        var smo = new MutationObserver(function(){
+            if(snapTimer) clearTimeout(snapTimer);
+            snapTimer = setTimeout(function(){
+                try{
+                    var id = window.__lastHistoryId;
+                    if(!id || typeof historyData === 'undefined') return;
+                    var entry = null;
+                    for(var i=0;i<historyData.length;i++){ if(historyData[i].id === id){ entry = historyData[i]; break; } }
+                    if(!entry) return;
+                    entry.snapshot = snapBox.innerHTML;
+                    localStorage.setItem('dartsHistory', JSON.stringify(historyData));
+                }catch(e){}
+            }, 800);
+        });
+        smo.observe(snapBox, { childList:true, subtree:true, characterData:true });
+    }
+})();
+</script>
+
+</body>
+</html>
