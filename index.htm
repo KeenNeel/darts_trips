@@ -2453,13 +2453,15 @@ window.__extBgAI = function(gen, place, food){
                     err.__uiMessage = '⚠️ GASの応答がJSONではありません（デプロイ更新・アクセス権限をご確認ください）';
                     throw err;
                 }
-                return data;
+                return { data: data, raw: raw };
             });
         })
-        .then(function(data){
+        .then(function(res){
+            var data = res.data;
             var urls = extractImagesFromResponse(data).slice(0,3);
             if(urls.length === 0){
-                console.warn('[画像検索] 「' + query + '」の画像が見つかりませんでした。GASの応答内容:', data);
+                // ★コピペしやすいよう「生のJSON文字列」をそのまま1行で出す（オブジェクト展開不要）
+                console.warn('[画像検索] 「' + query + '」の画像が見つかりませんでした。GASの生応答(そのままコピーしてください): ' + res.raw);
                 var errMsg = (data && typeof data.message === 'string'
                     && (data.message.indexOf('エラー') >= 0 || data.message.indexOf('【') >= 0))
                     ? data.message : null;
@@ -2501,7 +2503,8 @@ window.__extBgAI = function(gen, place, food){
 
     // formatAIResponse をラップ：本物のAI項目（画像検索リンク付きの ai-item-title）にのみ
     // ギャラリーのプレースホルダーを差し込む（Google検索リンク集の合成項目には付かない）
-    if(typeof window.formatAIResponse === 'function'){
+    // ★ユーザー要望により、Pixabay画像機能は無効化（ボタンもGAS画像呼び出しも行わない）。
+    if(false && typeof window.formatAIResponse === 'function'){
         var _origFormatForGallery = window.formatAIResponse;
         window.formatAIResponse = function(text){
             var html = _origFormatForGallery.call(this, text);
@@ -2663,6 +2666,133 @@ window.__extBgAI = function(gen, place, food){
         });
         smo.observe(snapBox, { childList:true, subtree:true, characterData:true });
     }
+})();
+</script>
+
+<!-- 🤖🔘 AIオンデマンド調査パック v14（既存コード非改変・最終上書きのみ）
+     ・ダーツ着弾時にAIを自動呼び出ししない（Google検索結果だけ即表示）
+     ・0/1/2 の各セクション見出しに「🤖 AIで調査」ボタンを付与
+     ・ボタンを押すと、そのテーマだけAIに問い合わせて見出し直下に結果を差し込む -->
+<style>
+    .ai-invest-btn { display:inline-block; margin-left:10px; border:none; background:linear-gradient(135deg,#8e44ad,#3498db); color:#fff; font-weight:800; font-size:0.8rem; padding:5px 14px; border-radius:16px; cursor:pointer; vertical-align:middle; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+    .ai-invest-btn:hover { filter:brightness(1.08); }
+    .ai-invest-btn:disabled { opacity:0.6; cursor:default; }
+    .ai-invest-result { margin:10px 0 4px; padding:12px 14px; background:#f6efff; border-left:4px solid #8e44ad; border-radius:0 10px 10px 0; }
+    .ai-invest-result .air-badge { display:inline-block; background:linear-gradient(135deg,#8e44ad,#3498db); color:#fff; font-weight:900; font-size:0.78rem; padding:3px 10px; border-radius:14px; margin-bottom:8px; }
+    .ai-invest-loading { color:#8e44ad; font-weight:700; font-size:0.88rem; padding:8px 0; }
+</style>
+<script>
+// ── (1) AI自動呼び出しを停止：callAIGuideは何もせず即nullを返す（Google検索のみ表示） ──
+//    bare再束縛で内側 showResultAt の呼び出しに確実に反映（最後の代入が有効）。
+callAIGuide = async function(_ignoredPrompt){
+    // 到達地名だけは記録（AI調査ボタンのクエリに使う）
+    try{
+        var prefEl=document.getElementById('res-pref-name');
+        var cityEl=document.getElementById('res-addr-main');
+        var pref=null, mm;
+        var pt = prefEl ? (prefEl.textContent||'') : '';
+        if((mm=pt.match(/✨\s*(\S+?)\s*に到着/))) pref=mm[1];
+        if(pref && !(window.prefData && window.prefData[pref])) pref=null;
+        var city=cityEl?(cityEl.textContent||'').trim():'';
+        var foreign = pt.indexOf('海外')>=0;
+        window.__currentPlaceName = foreign ? (city||'海外の観光地')
+            : (pref ? (city && city!==pref ? pref+' '+city : pref) : (city||'この地域'));
+    }catch(e){}
+    return null;   // ← AIは呼ばない。内側が buildFallbackInfo（Google検索）を表示する。
+};
+
+(function(){
+    'use strict';
+
+    // ── (2) Google検索結果表示後、混雑メッセージを消し、0/1/2見出しにAI調査ボタンを付与 ──
+    var box = document.getElementById('ai-content');
+    if(!box) return;
+
+    // 各セクションのテーマ定義（見出しの絵文字＋番号で判定）
+    var THEMES = [
+        { key:'0', match:/^✨\s*0\./,  label:'このスポットの魅力・運勢',
+          ask:'「%P%」全体の魅力を熱く紹介してください。（150文字程度＋🔮運勢を一言＋👏褒め言葉を一言。絵文字たっぷり）URLや緯度経度は書かない。' },
+        { key:'1', match:/1\.\s*歴史/,  label:'歴史・名所',
+          ask:'「%P%」の歴史・ランドマーク・名所を5件、各「■ スポット名」＋40〜80文字の説明＋絵文字で紹介してください。URLや緯度経度は書かない。' },
+        { key:'2', match:/2\.\s*地元グルメ|2\.\s*グルメ/, label:'グルメ・名物',
+          ask:'「%P%」の地元グルメ・名物・お店を5件、各「■ 店名/料理名」＋40〜80文字の説明＋絵文字で紹介してください。URLや緯度経度は書かない。' }
+    ];
+
+    function askAI(prompt){
+        return fetchWithTimeout(AI_ENDPOINT, { method:'POST', body: JSON.stringify({ prompt: prompt }) }, 30000)
+            .then(function(r){ return r.text(); })
+            .then(function(raw){
+                var j; try{ j=JSON.parse(raw); }catch(e){ return { error:'応答が不正です' }; }
+                var msg = j && j.message ? j.message : null;
+                if(msg === '__RATE_LIMIT__') return { error:'本日のAI利用上限に達しました' };
+                if(!msg || msg[0]==='【') return { error:(msg||'AIから空の応答') };
+                return { text: msg };
+            })
+            .catch(function(){ return { error:'通信に失敗しました（時間をおいて再度お試しください）' }; });
+    }
+
+    window.__aiInvestigate = function(btn, key){
+        var theme = null;
+        for(var i=0;i<THEMES.length;i++){ if(THEMES[i].key===key){ theme=THEMES[i]; break; } }
+        if(!theme) return;
+        var place = String(window.__currentPlaceName || 'この地域');
+        btn.disabled = true;
+        var holder = document.getElementById('ai-invest-holder-'+key);
+        if(!holder) return;
+        holder.innerHTML = '<div class="ai-invest-loading">🤖 AIが「'+theme.label+'」を調査中…</div>';
+        askAI(theme.ask.replace(/%P%/g, place)).then(function(res){
+            if(res.error){
+                holder.innerHTML = '<div class="ai-invest-result"><span class="air-badge">🤖 AI調査</span><div style="color:#c0392b;font-size:0.85rem;">⚠️ '+res.error+'</div></div>';
+                btn.disabled = false; btn.textContent = '🤖 もう一度AIで調査';
+                return;
+            }
+            var formatted;
+            try{ formatted = (typeof formatAIResponse==='function') ? formatAIResponse(res.text) : res.text.replace(/\n/g,'<br>'); }
+            catch(e){ formatted = res.text.replace(/</g,'&lt;').replace(/\n/g,'<br>'); }
+            holder.innerHTML = '<div class="ai-invest-result"><span class="air-badge">🤖 AI生成（'+theme.label+'）</span>'+formatted+'</div>';
+            btn.style.display = 'none';
+            if(typeof addSourceFallbacks==='function'){ try{ addSourceFallbacks(); }catch(e){} }
+        });
+    };
+
+    // Google検索結果が描画されたら、混雑文言を消し、各見出しにボタンを注入
+    function enhance(){
+        var html = box.innerHTML;
+        if(!html) return;
+        // 自動AIを止めたことで出る「混雑で受け取れませんでした」文言を除去
+        var cleaned = html.replace(/<div[^>]*>🤖 AIガイドの応答が混雑で受け取れませんでした。[\s\S]*?<\/div>/, '');
+        if(cleaned !== html){ box.innerHTML = cleaned; return; } // 変更したら再描画を待って次サイクルで注入
+
+        // 既にボタン注入済みなら何もしない
+        if(html.indexOf('data-ai-invest="1"') >= 0) return;
+        // Google検索リンク集が表示されている時だけ対象にする
+        if(html.indexOf('google.com') < 0) return;
+
+        var headings = box.querySelectorAll ? box.querySelectorAll('.ai-heading') : [];
+        var injected = false;
+        Array.prototype.forEach.call(headings, function(h){
+            if(h.getAttribute('data-ai-invest')==='1') return;
+            var txt = h.textContent || '';
+            for(var i=0;i<THEMES.length;i++){
+                if(THEMES[i].match.test(txt)){
+                    h.setAttribute('data-ai-invest','1');
+                    var btn = document.createElement('button');
+                    btn.className = 'ai-invest-btn';
+                    btn.textContent = '🤖 AIで調査';
+                    btn.setAttribute('onclick', "window.__aiInvestigate(this,'"+THEMES[i].key+"')");
+                    h.appendChild(btn);
+                    var holder = document.createElement('div');
+                    holder.id = 'ai-invest-holder-'+THEMES[i].key;
+                    if(h.parentNode){ h.parentNode.insertBefore(holder, h.nextSibling); }
+                    injected = true;
+                    break;
+                }
+            }
+        });
+    }
+
+    var mo = new MutationObserver(function(){ try{ enhance(); }catch(e){} });
+    mo.observe(box, { childList:true, subtree:true });
 })();
 </script>
 
