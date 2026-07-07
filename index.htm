@@ -1085,11 +1085,10 @@ window.prefData = prefData;
         const shareText = buildShareText(label, cityLabel, food, conqCount);
 
         // 宿・旅行リンク
-        // 外部予約サイトの直検索URLは仕様変更で壊れやすいため、
-        // Googleのサイト内検索（site:）経由にして「必ず動く」ことを優先する。
-        // ユーザーは検索結果からじゃらん/楽天トラベルの該当ページへ確実に到達できる。
-        const jalan = `https://www.google.com/search?q=${encodeURIComponent(label + ' 宿 ホテル')}+site:jalan.net`;
-        const rakuten = `https://www.google.com/search?q=${encodeURIComponent(label + ' 宿 ホテル')}+site:travel.rakuten.co.jp`;
+        // site:演算子はスマホ等で不安定なため使わず、「地名 + サイト名」の
+        // 通常のGoogle検索にする。検索結果トップから各サイトの該当ページへ確実に到達できる。
+        const jalan = `https://www.google.com/search?q=${encodeURIComponent(label + ' 宿 じゃらん')}`;
+        const rakuten = `https://www.google.com/search?q=${encodeURIComponent(label + ' 宿 楽天トラベル')}`;
 
         const wrap = document.createElement('div');
         wrap.id = 'ext-result-extra';
@@ -1106,8 +1105,8 @@ window.prefData = prefData;
             </div>
             ${distHtml}
             <div class="ext-travel-row">
-                <a class="ext-travel-link ext-jalan" href="${jalan}" target="_blank" rel="noopener">🏨 じゃらんで宿を探す</a>
-                <a class="ext-travel-link ext-rakuten" href="${rakuten}" target="_blank" rel="noopener">🅁 楽天トラベルで探す</a>
+                <a class="ext-travel-link ext-jalan" href="${jalan}" target="_blank" rel="noopener" onclick="window.open(this.href,'_blank');return false;">🏨 じゃらんで宿を探す</a>
+                <a class="ext-travel-link ext-rakuten" href="${rakuten}" target="_blank" rel="noopener" onclick="window.open(this.href,'_blank');return false;">🅁 楽天トラベルで探す</a>
             </div>
         `;
         // マップセクションの直後に差し込む（AI本文の上）
