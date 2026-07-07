@@ -1085,8 +1085,11 @@ window.prefData = prefData;
         const shareText = buildShareText(label, cityLabel, food, conqCount);
 
         // 宿・旅行リンク
-        const jalan = `https://www.jalan.net/uw/uwp2011/uww2011init.do?keyword=${encodeURIComponent(label)}`;
-        const rakuten = `https://travel.rakuten.co.jp/dsearch/?f_keyword=${encodeURIComponent(label)}`;
+        // 外部予約サイトの直検索URLは仕様変更で壊れやすいため、
+        // Googleのサイト内検索（site:）経由にして「必ず動く」ことを優先する。
+        // ユーザーは検索結果からじゃらん/楽天トラベルの該当ページへ確実に到達できる。
+        const jalan = `https://www.google.com/search?q=${encodeURIComponent(label + ' 宿 ホテル')}+site:jalan.net`;
+        const rakuten = `https://www.google.com/search?q=${encodeURIComponent(label + ' 宿 ホテル')}+site:travel.rakuten.co.jp`;
 
         const wrap = document.createElement('div');
         wrap.id = 'ext-result-extra';
